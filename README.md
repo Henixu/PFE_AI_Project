@@ -1,6 +1,5 @@
 import pypandoc
 
-readme = r"""# SopraHR Interne
 
 Application web de gestion interne d’entreprise développée avec **Angular**, **Spring Boot** et **PostgreSQL**.
 
