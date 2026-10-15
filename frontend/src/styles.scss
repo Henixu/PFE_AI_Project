@@ -1,1 +1,48 @@
 /* You can add global styles to this file, and also import other style files */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #f4f6f8;
+  color: #1f2933;
+}
+
+.auth-card {
+  max-width: 380px;
+  margin: 10vh auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+
+  form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  label {
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+  }
+
+  input {
+    padding: 0.5rem;
+    font-size: 1rem;
+  }
+
+  button {
+    padding: 0.6rem;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .error {
+    color: #b42318;
+    margin: 0;
+  }
+
+  .muted {
+    color: #6b7280;
+    font-size: 0.8rem;
+  }
+}

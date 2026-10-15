@@ -1,0 +1,13 @@
+<main class="auth-card">
+  <h1>Tableau de bord</h1>
+  @if (auth.user(); as user) {
+    <p>
+      Connecté : <strong>{{ user.firstName ?? user.email }} {{ user.lastName }}</strong>
+      ({{ user.role }})
+    </p>
+    @if (auth.hasAnyRole(['ADMIN'])) {
+      <p><a routerLink="/admin">Administration</a></p>
+    }
+  }
+  <button type="button" (click)="auth.logout()">Se déconnecter</button>
+</main>

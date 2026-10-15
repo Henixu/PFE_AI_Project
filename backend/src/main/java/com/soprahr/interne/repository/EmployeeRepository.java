@@ -15,6 +15,9 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     @EntityGraph(attributePaths = {"department", "manager"})
     Page<Employee> findByDepartmentId(Long departmentId, Pageable pageable);
 
+    @EntityGraph(attributePaths = {"department"})
+    Optional<Employee> findByUserId(Long userId);
+
     @EntityGraph(attributePaths = {"department", "manager", "user"})
     Optional<Employee> findWithDetailsById(Long id);
 }
