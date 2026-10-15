@@ -1,9 +1,18 @@
-import { Component } from '@angular/core';
+import { Location } from '@angular/common';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+
+import { ThemeToggle } from './theme-toggle/theme-toggle';
 
 @Component({
   selector: 'app-forbidden',
-  imports: [RouterLink],
+  imports: [RouterLink, ThemeToggle],
   templateUrl: './forbidden.html'
 })
-export class Forbidden {}
+export class Forbidden {
+  private readonly location = inject(Location);
+
+  protected back(): void {
+    this.location.back();
+  }
+}

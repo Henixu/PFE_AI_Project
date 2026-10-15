@@ -1,13 +1,28 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="utf-8">
   <title>SopraHR Interne</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Applique le thème avant le rendu pour éviter un flash clair/sombre -->
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('soprahr.theme');
+        if (t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      } catch (e) {}
+    })();
+  </script>
 </head>
-<body>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-800 antialiased transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
   <app-root></app-root>
 </body>
 </html>

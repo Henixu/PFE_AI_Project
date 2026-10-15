@@ -5,20 +5,27 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { HealthService } from '../../../core/services/health.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { Alert } from '../../../shared/components/alert/alert';
+import { AuthShell } from '../../../shared/components/auth-shell/auth-shell';
+
+type ApiState = 'checking' | 'up' | 'down';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, AuthShell, Alert],
   templateUrl: './login.html'
 })
 export class Login {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly toast = inject(ToastService);
 
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
-  protected readonly apiStatus = signal('Vérification de l\'API...');
+  protected readonly showPassword = signal(false);
+  protected readonly apiState = signal<ApiState>('checking');
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     email: ['', [Validators.required, Validators.email]],
@@ -29,21 +36,28 @@ export class Login {
     inject(HealthService)
       .check()
       .subscribe({
-        next: (res) => this.apiStatus.set(`API : ${res.status}`),
-        error: () => this.apiStatus.set('API : injoignable')
+        next: (res) => this.apiState.set(res.status === 'UP' ? 'up' : 'down'),
+        error: () => this.apiState.set('down')
       });
+  }
+
+  protected invalid(control: 'email' | 'password'): boolean {
+    const c = this.form.controls[control];
+    return c.invalid && c.touched;
   }
 
   protected submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
-      this.error.set('Saisissez un e-mail valide et votre mot de passe.');
       return;
     }
     this.loading.set(true);
     this.error.set(null);
     this.auth.login(this.form.getRawValue()).subscribe({
-      next: () => void this.router.navigateByUrl(this.safeReturnUrl()),
+      next: (res) => {
+        this.toast.success(`Bienvenue${res.user.firstName ? ', ' + res.user.firstName : ''} !`, 'Connexion réussie.');
+        void this.router.navigateByUrl(this.safeReturnUrl());
+      },
       error: (err: HttpErrorResponse) => {
         this.loading.set(false);
         this.error.set(

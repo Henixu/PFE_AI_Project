@@ -5,6 +5,7 @@ import { Observable, tap } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { LoginRequest, LoginResponse, MessageResponse, Role, UserProfile } from '../models/auth.models';
+import { ToastService } from './toast.service';
 
 const STORAGE_KEY = 'soprahr.session';
 const MAX_TIMEOUT_MS = 2_147_483_647;
@@ -19,6 +20,7 @@ interface Session {
 export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private readonly session = signal<Session | null>(this.restore());
   private expiryTimer?: ReturnType<typeof setTimeout>;
 
@@ -90,7 +92,10 @@ export class AuthService {
   private scheduleExpiry(session: Session): void {
     clearTimeout(this.expiryTimer);
     const delay = Math.min(new Date(session.expiresAt).getTime() - Date.now(), MAX_TIMEOUT_MS);
-    this.expiryTimer = setTimeout(() => this.logout(true), Math.max(delay, 0));
+    this.expiryTimer = setTimeout(() => {
+      this.logout(true, this.router.url);
+      this.toast.warning('Session expirée', 'Reconnectez-vous pour continuer.');
+    }, Math.max(delay, 0));
   }
 
   private isExpired(session: Session): boolean {

@@ -5,6 +5,7 @@ import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
 
 const PUBLIC_ENDPOINTS = ['/auth/login', '/auth/forgot-password', '/auth/reset-password'];
 
@@ -15,6 +16,7 @@ const PUBLIC_ENDPOINTS = ['/auth/login', '/auth/forgot-password', '/auth/reset-p
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
   const router = inject(Router);
+  const toast = inject(ToastService);
 
   const isApi = req.url.startsWith(`${environment.apiUrl}/`);
   const isPublic = PUBLIC_ENDPOINTS.some((p) => req.url === `${environment.apiUrl}${p}`);
@@ -28,8 +30,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401) {
+        if (token) {
+          toast.warning('Session expirée', 'Reconnectez-vous pour continuer.');
+        }
         auth.logout(true, router.url.startsWith('/login') ? undefined : router.url);
       } else if (err.status === 403) {
+        toast.error('Accès refusé', 'Vous n\'avez pas les droits nécessaires pour cette action.');
         void router.navigate(['/forbidden']);
       }
       return throwError(() => err);
