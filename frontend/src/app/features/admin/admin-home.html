@@ -35,10 +35,12 @@
 
   <div class="mt-6 grid gap-5 sm:grid-cols-2">
     @for (section of sections; track section.title; let i = $index) {
-      <article
-        class="card group flex items-start gap-4 p-6 transition duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-in-up"
-        [style.animation-delay.ms]="120 + i * 80"
-      >
+      @if (section.route) {
+        <a
+          [routerLink]="section.route"
+          class="card group flex items-start gap-4 p-6 transition duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-in-up"
+          [style.animation-delay.ms]="120 + i * 80"
+        >
         <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 transition duration-300 group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-brand-500 group-hover:to-fuchsia-500 group-hover:text-white dark:bg-brand-500/15 dark:text-brand-300">
           <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="section.icon" />
@@ -47,13 +49,46 @@
         <div class="flex-1">
           <div class="flex items-center justify-between gap-2">
             <h2 class="font-semibold">{{ section.title }}</h2>
-            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
-              À venir
-            </span>
+            @if (section.route) {
+              <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                Disponible
+              </span>
+            } @else {
+              <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                À venir
+              </span>
+            }
           </div>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ section.description }}</p>
         </div>
-      </article>
+        </a>
+      } @else {
+        <article
+          class="card group flex items-start gap-4 p-6 transition duration-300 hover:-translate-y-1 hover:shadow-2xl animate-fade-in-up"
+          [style.animation-delay.ms]="120 + i * 80"
+        >
+        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600 transition duration-300 group-hover:scale-110 group-hover:bg-gradient-to-br group-hover:from-brand-500 group-hover:to-fuchsia-500 group-hover:text-white dark:bg-brand-500/15 dark:text-brand-300">
+          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" [attr.d]="section.icon" />
+          </svg>
+        </div>
+        <div class="flex-1">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="font-semibold">{{ section.title }}</h2>
+            @if (section.route) {
+              <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+                Disponible
+              </span>
+            } @else {
+              <span class="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+                À venir
+              </span>
+            }
+          </div>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ section.description }}</p>
+        </div>
+        </article>
+      }
     }
   </div>
 </main>

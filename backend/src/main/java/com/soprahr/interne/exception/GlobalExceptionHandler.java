@@ -3,6 +3,7 @@ package com.soprahr.interne.exception;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -23,6 +24,28 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidResetTokenException.class)
     public ResponseEntity<ApiError> invalidResetToken(InvalidResetTokenException e) {
         return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", e.getMessage()));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiError> notFound(ResourceNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiError.of(404, "Not Found", e.getMessage()));
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> conflict(ConflictException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiError.of(409, "Conflict", e.getMessage()));
+    }
+
+    @ExceptionHandler(BusinessRuleException.class)
+    public ResponseEntity<ApiError> businessRule(BusinessRuleException e) {
+        return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", e.getMessage()));
+    }
+
+    /** Filet de sécurité si deux requêtes concurrentes passent la vérification applicative (unicité en base). */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> integrity(DataIntegrityViolationException e) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.of(409, "Conflict", "Cette opération entre en conflit avec des données existantes"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

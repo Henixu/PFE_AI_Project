@@ -1,0 +1,355 @@
+<app-top-bar />
+
+<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <nav class="mb-6 flex items-center gap-2 text-sm text-slate-500 animate-fade-in dark:text-slate-400" aria-label="Fil d'Ariane">
+    <a routerLink="/dashboard" class="link !font-normal">Tableau de bord</a>
+    <span aria-hidden="true">›</span>
+    <a routerLink="/admin" class="link !font-normal">Administration</a>
+    <span aria-hidden="true">›</span>
+    <span class="font-medium text-slate-900 dark:text-white">Comptes utilisateurs</span>
+  </nav>
+
+  <div class="flex flex-col gap-4 animate-fade-in-up sm:flex-row sm:items-end sm:justify-between">
+    <div>
+      <h1 class="text-3xl font-extrabold tracking-tight">Comptes utilisateurs</h1>
+      <p class="mt-1 text-slate-500 dark:text-slate-400">
+        Créez les comptes, attribuez les rôles et contrôlez l'accès à la plateforme.
+      </p>
+    </div>
+    <button type="button" class="btn-primary sm:w-auto sm:px-5" (click)="open('create')">
+      <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+      </svg>
+      Nouveau compte
+    </button>
+  </div>
+
+  <!-- Filtres -->
+  <section class="card mt-6 grid gap-3 p-4 animate-fade-in-up [animation-delay:80ms] sm:grid-cols-2 lg:grid-cols-[1fr_200px_200px_120px]">
+    <div class="relative">
+      <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+        <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+        </svg>
+      </span>
+      <input
+        type="search"
+        class="input pl-11"
+        placeholder="Rechercher par e-mail…"
+        aria-label="Rechercher un utilisateur"
+        (input)="onSearch($any($event.target).value)"
+      />
+    </div>
+    <select class="input" aria-label="Filtrer par rôle" (change)="onRoleFilter($any($event.target).value)">
+      <option value="">Tous les rôles</option>
+      @for (r of roles; track r.value) {
+        <option [value]="r.value">{{ r.label }}</option>
+      }
+    </select>
+    <select class="input" aria-label="Filtrer par statut" (change)="onStatusFilter($any($event.target).value)">
+      <option value="">Tous les statuts</option>
+      <option value="true">Actifs</option>
+      <option value="false">Désactivés</option>
+    </select>
+    <select class="input" aria-label="Lignes par page" (change)="onSize($any($event.target).value)">
+      @for (s of sizes; track s) {
+        <option [value]="s">{{ s }} / page</option>
+      }
+    </select>
+  </section>
+
+  @if (listError()) {
+    <div class="mt-6">
+      <app-alert type="error" title="Chargement impossible">
+        {{ listError() }}
+        <button type="button" class="ml-1 font-semibold underline underline-offset-2" (click)="load()">Réessayer</button>
+      </app-alert>
+    </div>
+  }
+
+  <!-- Tableau -->
+  <section class="card mt-6 overflow-hidden animate-fade-in-up [animation-delay:140ms]">
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[760px] text-left text-sm">
+        <thead class="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+          <tr>
+            <th class="px-5 py-3 font-semibold">
+              <button type="button" (click)="sort('email')" class="inline-flex items-center gap-1 hover:text-brand-600 dark:hover:text-brand-300">
+                Utilisateur <span aria-hidden="true">{{ sortIcon('email') }}</span>
+              </button>
+            </th>
+            <th class="px-5 py-3 font-semibold">
+              <button type="button" (click)="sort('role')" class="inline-flex items-center gap-1 hover:text-brand-600 dark:hover:text-brand-300">
+                Rôle <span aria-hidden="true">{{ sortIcon('role') }}</span>
+              </button>
+            </th>
+            <th class="px-5 py-3 font-semibold">Employé associé</th>
+            <th class="px-5 py-3 font-semibold">
+              <button type="button" (click)="sort('enabled')" class="inline-flex items-center gap-1 hover:text-brand-600 dark:hover:text-brand-300">
+                Statut <span aria-hidden="true">{{ sortIcon('enabled') }}</span>
+              </button>
+            </th>
+            <th class="px-5 py-3 font-semibold">
+              <button type="button" (click)="sort('lastLoginAt')" class="inline-flex items-center gap-1 hover:text-brand-600 dark:hover:text-brand-300">
+                Dernière connexion <span aria-hidden="true">{{ sortIcon('lastLoginAt') }}</span>
+              </button>
+            </th>
+            <th class="px-5 py-3 text-right font-semibold">Actions</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 dark:divide-white/5">
+          @if (loading() && !result()) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <tr>
+                <td colspan="6" class="px-5 py-4">
+                  <div class="h-6 animate-pulse rounded-lg bg-slate-100 dark:bg-white/5"></div>
+                </td>
+              </tr>
+            }
+          } @else {
+            @for (user of result()?.content; track user.id) {
+              <tr class="transition hover:bg-slate-50/80 dark:hover:bg-white/5" [class.opacity-60]="!user.enabled">
+                <td class="px-5 py-3.5">
+                  <div class="flex items-center gap-3">
+                    <div class="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-500 to-fuchsia-500 text-xs font-bold text-white">
+                      {{ initials(user) }}
+                    </div>
+                    <div class="min-w-0">
+                      <p class="truncate font-medium">
+                        {{ user.email }}
+                        @if (user.id === currentUserId()) {
+                          <span class="ml-1 rounded-full bg-brand-100 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">Vous</span>
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold" [class]="roleBadges[user.role]">
+                    {{ roleLabel(user.role) }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 text-slate-600 dark:text-slate-300">
+                  @if (user.employeeName) {
+                    {{ user.employeeName }}
+                  } @else {
+                    <span class="text-slate-400 dark:text-slate-500">Aucun</span>
+                  }
+                </td>
+                <td class="px-5 py-3.5">
+                  <span class="inline-flex items-center gap-1.5 text-xs font-medium"
+                    [class]="user.enabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'">
+                    <span class="h-2 w-2 rounded-full" [class]="user.enabled ? 'bg-emerald-500' : 'bg-slate-400'"></span>
+                    {{ user.enabled ? 'Actif' : 'Désactivé' }}
+                  </span>
+                </td>
+                <td class="px-5 py-3.5 text-slate-500 dark:text-slate-400">
+                  {{ user.lastLoginAt ? (user.lastLoginAt | date: 'dd/MM/yyyy HH:mm') : 'Jamais' }}
+                </td>
+                <td class="px-5 py-3.5">
+                  <div class="flex justify-end gap-1">
+                    <button type="button" class="btn-ghost !px-2.5 !py-1.5 text-xs" (click)="open('edit', user)" title="Modifier l'e-mail">Modifier</button>
+                    <button type="button" class="btn-ghost !px-2.5 !py-1.5 text-xs" (click)="open('role', user)"
+                      [disabled]="user.id === currentUserId()"
+                      [attr.title]="user.id === currentUserId() ? 'Vous ne pouvez pas modifier votre propre rôle' : 'Changer le rôle'">
+                      Rôle
+                    </button>
+                    <button type="button" class="btn-ghost !px-2.5 !py-1.5 text-xs" (click)="open('link', user)" title="Associer à un employé">
+                      Employé
+                    </button>
+                    <button type="button" class="btn-ghost !px-2.5 !py-1.5 text-xs"
+                      [class]="user.enabled ? '!text-rose-600 dark:!text-rose-400' : '!text-emerald-600 dark:!text-emerald-400'"
+                      (click)="open('status', user)"
+                      [disabled]="user.id === currentUserId()"
+                      [attr.title]="user.id === currentUserId() ? 'Vous ne pouvez pas désactiver votre propre compte' : ''">
+                      {{ user.enabled ? 'Désactiver' : 'Activer' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="px-5 py-14 text-center">
+                  <p class="font-semibold">Aucun utilisateur trouvé</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Modifiez vos filtres ou créez un nouveau compte.</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (result(); as r) {
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-white/10 dark:text-slate-400 sm:flex-row">
+        <p>{{ from() }}–{{ to() }} sur {{ r.totalElements }} utilisateur(s)</p>
+        <div class="flex items-center gap-1">
+          <button type="button" class="btn-ghost !px-3" (click)="goTo(r.page - 1)" [disabled]="r.page === 0">Précédent</button>
+          <span class="px-2 font-medium text-slate-900 dark:text-white">Page {{ r.page + 1 }} / {{ r.totalPages || 1 }}</span>
+          <button type="button" class="btn-ghost !px-3" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages">Suivant</button>
+        </div>
+      </div>
+    }
+  </section>
+</main>
+
+<!-- Boîtes de dialogue -->
+@if (dialog(); as d) {
+  <div
+    class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4 backdrop-blur-sm animate-fade-in"
+    (click)="close()"
+    (keydown.escape)="close()"
+    tabindex="-1"
+  >
+    <div
+      class="card w-full max-w-md bg-white p-6 shadow-2xl animate-scale-in dark:bg-slate-900 sm:p-7"
+      role="dialog"
+      aria-modal="true"
+      (click)="$event.stopPropagation()"
+    >
+      @switch (d.kind) {
+        @case ('create') {
+          <h2 class="text-xl font-bold">Nouveau compte</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Le mot de passe initial est à communiquer à la personne.</p>
+          <form [formGroup]="createForm" (ngSubmit)="submitCreate()" novalidate class="mt-5 space-y-4">
+            @if (dialogError()) { <app-alert type="error">{{ dialogError() }}</app-alert> }
+            <div>
+              <label for="c-email" class="field-label">Adresse e-mail</label>
+              <input id="c-email" type="email" formControlName="email" class="input" [class.input-invalid]="fieldInvalid('create', 'email')" autocomplete="off" />
+              @if (fieldInvalid('create', 'email')) { <p class="field-error">E-mail valide obligatoire.</p> }
+            </div>
+            <div>
+              <label for="c-password" class="field-label">Mot de passe initial</label>
+              <div class="relative">
+                <input id="c-password" [type]="showPassword() ? 'text' : 'password'" formControlName="password" class="input pr-20"
+                  [class.input-invalid]="fieldInvalid('create', 'password')" autocomplete="new-password" />
+                <button type="button" class="absolute inset-y-0 right-0 px-3 text-xs font-medium text-slate-500 hover:text-brand-600 dark:hover:text-brand-300"
+                  (click)="showPassword.set(!showPassword())">{{ showPassword() ? 'Masquer' : 'Afficher' }}</button>
+              </div>
+              @if (fieldInvalid('create', 'password')) { <p class="field-error">8 à 72 caractères.</p> }
+            </div>
+            <div>
+              <label for="c-role" class="field-label">Rôle</label>
+              <select id="c-role" formControlName="role" class="input">
+                @for (r of roles; track r.value) { <option [value]="r.value">{{ r.label }} — {{ r.description }}</option> }
+              </select>
+            </div>
+            <div>
+              <label for="c-employee" class="field-label">Employé associé <span class="font-normal text-slate-400">(optionnel)</span></label>
+              <select id="c-employee" formControlName="employeeId" class="input">
+                <option [ngValue]="null">Aucun</option>
+                @for (e of employees(); track e.id) { <option [ngValue]="e.id">{{ e.fullName }} ({{ e.employeeNumber }})</option> }
+              </select>
+            </div>
+            <label class="flex cursor-pointer items-center gap-2 text-sm">
+              <input type="checkbox" formControlName="enabled" class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+              Compte actif dès la création
+            </label>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Annuler</button>
+              <button type="submit" class="btn-primary !w-auto px-5" [disabled]="saving()">{{ saving() ? 'Création…' : 'Créer le compte' }}</button>
+            </div>
+          </form>
+        }
+
+        @case ('edit') {
+          <h2 class="text-xl font-bold">Modifier le compte</h2>
+          <form [formGroup]="editForm" (ngSubmit)="submitEdit()" novalidate class="mt-5 space-y-4">
+            @if (dialogError()) { <app-alert type="error">{{ dialogError() }}</app-alert> }
+            <div>
+              <label for="e-email" class="field-label">Adresse e-mail</label>
+              <input id="e-email" type="email" formControlName="email" class="input" [class.input-invalid]="fieldInvalid('edit', 'email')" />
+              @if (fieldInvalid('edit', 'email')) { <p class="field-error">E-mail valide obligatoire.</p> }
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Le rôle, le statut et l'employé associé se modifient avec leurs propres actions.</p>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Annuler</button>
+              <button type="submit" class="btn-primary !w-auto px-5" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+            </div>
+          </form>
+        }
+
+        @case ('role') {
+          <h2 class="text-xl font-bold">Modifier le rôle</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ d.user!.email }} — action enregistrée dans le journal d'audit.</p>
+          <div class="mt-5 space-y-4">
+            @if (dialogError()) { <app-alert type="error">{{ dialogError() }}</app-alert> }
+            <div class="space-y-2" role="radiogroup" aria-label="Rôle">
+              @for (r of roles; track r.value) {
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition"
+                  [class]="selectedRole() === r.value
+                    ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                    : 'border-slate-200 hover:border-brand-300 dark:border-white/10'">
+                  <input type="radio" name="role" [value]="r.value" [checked]="selectedRole() === r.value"
+                    (change)="selectedRole.set(r.value)" class="h-4 w-4 text-brand-600 focus:ring-brand-500" />
+                  <span>
+                    <span class="block text-sm font-semibold">{{ r.label }}</span>
+                    <span class="block text-xs text-slate-500 dark:text-slate-400">{{ r.description }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Annuler</button>
+              <button type="button" class="btn-primary !w-auto px-5" (click)="submitRole()" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Appliquer' }}</button>
+            </div>
+          </div>
+        }
+
+        @case ('status') {
+          <h2 class="text-xl font-bold">{{ d.user!.enabled ? 'Désactiver ce compte ?' : 'Réactiver ce compte ?' }}</h2>
+          <div class="mt-4 space-y-4">
+            @if (dialogError()) { <app-alert type="error">{{ dialogError() }}</app-alert> }
+            <app-alert [type]="d.user!.enabled ? 'warning' : 'info'">
+              @if (d.user!.enabled) {
+                <strong>{{ d.user!.email }}</strong> ne pourra plus se connecter et sa session en cours sera refusée.
+                Ses données sont conservées.
+              } @else {
+                <strong>{{ d.user!.email }}</strong> pourra de nouveau se connecter.
+              }
+            </app-alert>
+            <div class="flex justify-end gap-2 pt-2">
+              <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Annuler</button>
+              <button type="button" class="btn-primary !w-auto px-5" (click)="submitStatus()" [disabled]="saving()">
+                {{ saving() ? 'Patientez…' : d.user!.enabled ? 'Désactiver' : 'Réactiver' }}
+              </button>
+            </div>
+          </div>
+        }
+
+        @case ('link') {
+          <h2 class="text-xl font-bold">Employé associé</h2>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ d.user!.email }}</p>
+          <div class="mt-5 space-y-4">
+            @if (dialogError()) { <app-alert type="error">{{ dialogError() }}</app-alert> }
+            @if (d.user!.employeeName) {
+              <app-alert type="info">
+                Actuellement associé à <strong>{{ d.user!.employeeName }}</strong>. Retirez l'association avant d'en choisir un autre.
+              </app-alert>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Fermer</button>
+                <button type="button" class="btn-primary !w-auto px-5" (click)="unlink()" [disabled]="saving()">Retirer l'association</button>
+              </div>
+            } @else {
+              <div>
+                <label for="l-employee" class="field-label">Employés sans compte</label>
+                <select id="l-employee" class="input" (change)="selectedEmployee.set($any($event.target).value ? +$any($event.target).value : null)">
+                  <option value="">Choisir un employé…</option>
+                  @for (e of employees(); track e.id) { <option [value]="e.id">{{ e.fullName }} ({{ e.employeeNumber }})</option> }
+                </select>
+                @if (employees().length === 0) {
+                  <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Aucun employé disponible : tous ont déjà un compte.</p>
+                }
+              </div>
+              <div class="flex justify-end gap-2 pt-2">
+                <button type="button" class="btn-ghost" (click)="close()" [disabled]="saving()">Annuler</button>
+                <button type="button" class="btn-primary !w-auto px-5" (click)="submitLink()" [disabled]="saving()">Associer</button>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  </div>
+}

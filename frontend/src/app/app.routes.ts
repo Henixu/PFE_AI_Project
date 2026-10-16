@@ -35,6 +35,12 @@ export const routes: Routes = [
     data: { roles: ['ADMIN'] },
     loadComponent: () => import('./features/admin/admin-home').then((m) => m.AdminHome)
   },
+  {
+    path: 'admin/users',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN'] },
+    loadComponent: () => import('./features/admin/users/users').then((m) => m.AdminUsers)
+  },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' }
 ];
