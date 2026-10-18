@@ -8,12 +8,13 @@ import { HealthService } from '../../../core/services/health.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Alert } from '../../../shared/components/alert/alert';
 import { AuthShell } from '../../../shared/components/auth-shell/auth-shell';
+import { Icon } from '../../../shared/components/icon/icon';
 
 type ApiState = 'checking' | 'up' | 'down';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, RouterLink, AuthShell, Alert],
+  imports: [ReactiveFormsModule, RouterLink, AuthShell, Alert, Icon],
   templateUrl: './login.html'
 })
 export class Login {
@@ -55,7 +56,7 @@ export class Login {
     this.error.set(null);
     this.auth.login(this.form.getRawValue()).subscribe({
       next: (res) => {
-        this.toast.success(`Bienvenue${res.user.firstName ? ', ' + res.user.firstName : ''} !`, 'Connexion réussie.');
+        this.toast.success(`Bienvenue${res.user.firstName ? ', ' + res.user.firstName : ''}`, 'Connexion réussie.');
         void this.router.navigateByUrl(this.safeReturnUrl());
       },
       error: (err: HttpErrorResponse) => {

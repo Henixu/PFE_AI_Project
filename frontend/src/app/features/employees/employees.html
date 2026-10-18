@@ -1,24 +1,267 @@
-<app-top-bar />
-<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-  <nav class="mb-6 flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400" aria-label="Fil d'Ariane">
-    <a routerLink="/dashboard" class="link !font-normal">Tableau de bord</a><span aria-hidden="true">›</span><span class="font-medium text-slate-900 dark:text-white">Employés</span>
+<app-shell>
+  <nav class="mb-4 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400" aria-label="Fil d'Ariane">
+    <a routerLink="/dashboard" class="hover:text-slate-900 dark:hover:text-white">Tableau de bord</a>
+    <app-icon name="chevron-right" class="h-3.5 w-3.5" />
+    <span class="font-medium text-slate-900 dark:text-white">Employés</span>
   </nav>
-  <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-    <div><h1 class="text-3xl font-extrabold tracking-tight">Employés</h1><p class="mt-1 text-slate-500 dark:text-slate-400">Centralisez les informations professionnelles et leur historique.</p></div>
-    <button type="button" class="btn-primary sm:w-auto" (click)="openCreate()">+ Nouvel employé</button>
+
+  <div class="page-header animate-fade-in">
+    <div>
+      <h1 class="page-title">Employés</h1>
+      <p class="page-subtitle">Centralisez les informations professionnelles et leur historique.</p>
+    </div>
+    <button type="button" class="btn-primary sm:w-auto" (click)="openCreate()">
+      <app-icon name="plus" class="h-4 w-4" [strokeWidth]="2" />
+      Nouvel employé
+    </button>
   </div>
-  <section class="card mt-6 grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_200px_180px_120px]">
-    <input type="search" class="input" placeholder="Nom, matricule ou poste…" aria-label="Rechercher un employé" (input)="search($any($event.target).value)" />
-    <select class="input" aria-label="Filtrer par département" (change)="department($any($event.target).value)"><option value="">Tous les départements</option>@for (item of departments(); track item.id) { <option [value]="item.id">{{ item.name }}</option> }</select>
-    <select class="input" aria-label="Filtrer par statut" (change)="status($any($event.target).value)"><option value="true">Actifs</option><option value="false">Désactivés</option><option value="">Tous les statuts</option></select>
-    <select class="input" aria-label="Lignes par page" (change)="patch({ size: +$any($event.target).value, page: 0 })"><option>10</option><option>25</option><option>50</option></select>
+
+  @if (error()) {
+    <div class="mb-6">
+      <app-alert type="error" title="Chargement impossible">
+        {{ error() }}
+        <button type="button" class="ml-1 font-semibold underline underline-offset-2" (click)="load()">Réessayer</button>
+      </app-alert>
+    </div>
+  }
+
+  <section class="card overflow-hidden animate-fade-in-up">
+    <!-- Filtres -->
+    <div class="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:grid-cols-2 lg:grid-cols-[1fr_220px_180px_130px]">
+      <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+          <app-icon name="search" class="h-4 w-4" />
+        </span>
+        <input
+          type="search"
+          class="input pl-9"
+          placeholder="Nom, matricule ou poste"
+          aria-label="Rechercher un employé"
+          (input)="search($any($event.target).value)"
+        />
+      </div>
+      <select class="input" aria-label="Filtrer par département" (change)="department($any($event.target).value)">
+        <option value="">Tous les départements</option>
+        @for (item of departments(); track item.id) {
+          <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+      <select class="input" aria-label="Filtrer par statut" (change)="status($any($event.target).value)">
+        <option value="true">Actifs</option>
+        <option value="false">Désactivés</option>
+        <option value="">Tous les statuts</option>
+      </select>
+      <select class="input" aria-label="Lignes par page" (change)="patch({ size: +$any($event.target).value, page: 0 })">
+        <option value="10">10 par page</option>
+        <option value="25">25 par page</option>
+        <option value="50">50 par page</option>
+      </select>
+    </div>
+
+    <!-- Tableau -->
+    <div class="overflow-x-auto">
+      <table class="data-table min-w-[820px]">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" (click)="sort('lastName')" class="sort-btn">
+                Employé <app-icon [name]="sortIcon('lastName')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Poste</th>
+            <th>Département</th>
+            <th>Embauche</th>
+            <th>Statut</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading() && !result()) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <tr>
+                <td colspan="6">
+                  <div class="h-5 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div>
+                </td>
+              </tr>
+            }
+          } @else {
+            @for (employee of result()?.content; track employee.id) {
+              <tr [class.text-slate-400]="!employee.active">
+                <td>
+                  <button type="button" class="group flex items-center gap-3 text-left" (click)="selected.set(employee)">
+                    <span class="avatar h-8 w-8 text-xs">{{ employee.firstName[0] }}{{ employee.lastName[0] }}</span>
+                    <span>
+                      <span class="block font-medium text-slate-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400"
+                        [class.!text-slate-400]="!employee.active">
+                        {{ employee.firstName }} {{ employee.lastName }}
+                      </span>
+                      <span class="block text-xs text-slate-500 dark:text-slate-400">{{ employee.employeeNumber }}</span>
+                    </span>
+                  </button>
+                </td>
+                <td>{{ employee.jobTitle || '—' }}</td>
+                <td>{{ employee.departmentName || '—' }}</td>
+                <td class="whitespace-nowrap">{{ employee.hireDate ? (employee.hireDate | date: 'dd/MM/yyyy') : '—' }}</td>
+                <td>
+                  @if (employee.active) {
+                    <span class="badge-success"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Actif</span>
+                  } @else {
+                    <span class="badge-neutral"><span class="h-1.5 w-1.5 rounded-full bg-slate-400"></span>Désactivé</span>
+                  }
+                </td>
+                <td>
+                  <div class="flex justify-end gap-0.5">
+                    <button type="button" class="btn-icon" (click)="selected.set(employee)" title="Voir la fiche" aria-label="Voir la fiche">
+                      <app-icon name="eye" class="h-4 w-4" />
+                    </button>
+                    <button type="button" class="btn-icon" (click)="openEdit(employee)" title="Modifier" aria-label="Modifier">
+                      <app-icon name="pencil" class="h-4 w-4" />
+                    </button>
+                    <button type="button" class="btn-icon"
+                      [class]="employee.active ? 'hover:!text-rose-600 dark:hover:!text-rose-400' : 'hover:!text-emerald-600 dark:hover:!text-emerald-400'"
+                      (click)="toggle(employee)"
+                      [attr.title]="employee.active ? 'Désactiver' : 'Réactiver'"
+                      [attr.aria-label]="employee.active ? 'Désactiver' : 'Réactiver'">
+                      <app-icon name="power" class="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="!py-14 text-center">
+                  <span class="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                    <app-icon name="users" class="h-5 w-5" />
+                  </span>
+                  <p class="font-medium text-slate-900 dark:text-white">Aucun employé trouvé</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Modifiez vos filtres ou ajoutez un nouvel employé.</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (result(); as r) {
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row">
+        <p>{{ from() }}–{{ to() }} sur {{ r.totalElements }} employé(s)</p>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page - 1)" [disabled]="r.page === 0" aria-label="Page précédente">
+            <app-icon name="chevron-left" class="h-4 w-4" />
+          </button>
+          <span class="px-1 font-medium text-slate-700 dark:text-slate-200">Page {{ r.page + 1 }} sur {{ r.totalPages || 1 }}</span>
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages" aria-label="Page suivante">
+            <app-icon name="chevron-right" class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    }
   </section>
-  @if (error()) { <div class="mt-6"><app-alert type="error">{{ error() }} <button class="underline" (click)="load()">Réessayer</button></app-alert></div> }
-  <section class="card mt-6 overflow-hidden">
-    <div class="overflow-x-auto"><table class="w-full min-w-[820px] text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50/70 text-xs uppercase tracking-wider text-slate-500 dark:border-white/10 dark:bg-white/5"><tr><th class="px-5 py-3"><button (click)="sort('lastName')">Employé {{ sortIcon('lastName') }}</button></th><th class="px-5 py-3">Poste</th><th class="px-5 py-3">Département</th><th class="px-5 py-3">Embauche</th><th class="px-5 py-3">Statut</th><th class="px-5 py-3 text-right">Actions</th></tr></thead>
-      <tbody class="divide-y divide-slate-100 dark:divide-white/5">@if (loading() && !result()) { <tr><td colspan="6" class="px-5 py-10 text-center">Chargement…</td></tr> } @else { @for (employee of result()?.content; track employee.id) { <tr class="hover:bg-slate-50/80 dark:hover:bg-white/5" [class.opacity-60]="!employee.active"><td class="px-5 py-3.5"><button class="text-left font-semibold hover:text-brand-600" (click)="selected.set(employee)">{{ employee.firstName }} {{ employee.lastName }}<span class="block text-xs font-normal text-slate-500">{{ employee.employeeNumber }}</span></button></td><td class="px-5 py-3.5">{{ employee.jobTitle || '—' }}</td><td class="px-5 py-3.5">{{ employee.departmentName || '—' }}</td><td class="px-5 py-3.5">{{ employee.hireDate ? (employee.hireDate | date:'dd/MM/yyyy') : '—' }}</td><td class="px-5 py-3.5">{{ employee.active ? 'Actif' : 'Désactivé' }}</td><td class="px-5 py-3.5 text-right"><button class="btn-ghost !px-2.5 !py-1.5 text-xs" (click)="openEdit(employee)">Modifier</button><button class="btn-ghost !px-2.5 !py-1.5 text-xs" (click)="toggle(employee)">{{ employee.active ? 'Désactiver' : 'Réactiver' }}</button></td></tr> } @empty { <tr><td colspan="6" class="px-5 py-14 text-center">Aucun employé trouvé.</td></tr> } }</tbody></table></div>
-    @if (result(); as r) { <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-white/10 sm:flex-row"><span>{{ from() }}–{{ to() }} sur {{ r.totalElements }} employé(s)</span><div class="flex items-center gap-2"><button class="btn-ghost !px-3" (click)="goTo(r.page - 1)" [disabled]="r.page === 0">Précédent</button><span>Page {{ r.page + 1 }} / {{ r.totalPages || 1 }}</span><button class="btn-ghost !px-3" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages">Suivant</button></div></div> }
-  </section>
-</main>
-@if (selected(); as employee) { <div class="fixed inset-0 z-50 grid place-items-center bg-slate-950/50 p-4" (click)="selected.set(null)"><article class="card w-full max-w-md p-6" (click)="$event.stopPropagation()"><div class="flex items-start justify-between"><div><h2 class="text-xl font-bold">{{ employee.firstName }} {{ employee.lastName }}</h2><p class="text-sm text-slate-500">{{ employee.employeeNumber }}</p></div><button class="btn-ghost !px-2" (click)="selected.set(null)" aria-label="Fermer">×</button></div><dl class="mt-5 space-y-3 text-sm"><div class="flex justify-between gap-4"><dt class="text-slate-500">Poste</dt><dd>{{ employee.jobTitle || '—' }}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Département</dt><dd>{{ employee.departmentName || '—' }}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Téléphone</dt><dd>{{ employee.phone || '—' }}</dd></div><div class="flex justify-between gap-4"><dt class="text-slate-500">Manager</dt><dd>{{ employee.managerName || '—' }}</dd></div></dl></article></div> }
-@if (editing(); as employee) { <div class="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/50 p-4" (click)="closeEditor()"><form class="card w-full max-w-2xl p-6" [formGroup]="form" (ngSubmit)="save()" (click)="$event.stopPropagation()" novalidate><div class="flex items-center justify-between"><h2 class="text-xl font-bold">{{ employee.id ? 'Modifier l’employé' : 'Nouvel employé' }}</h2><button type="button" class="btn-ghost !px-2" (click)="closeEditor()">×</button></div><div class="mt-5 grid gap-4 sm:grid-cols-2"><label><span class="field-label">Matricule</span><input class="input" formControlName="employeeNumber" [class.input-invalid]="invalid('employeeNumber')" /></label><label><span class="field-label">Prénom</span><input class="input" formControlName="firstName" [class.input-invalid]="invalid('firstName')" /></label><label><span class="field-label">Nom</span><input class="input" formControlName="lastName" [class.input-invalid]="invalid('lastName')" /></label><label><span class="field-label">Poste</span><input class="input" formControlName="jobTitle" /></label><label><span class="field-label">Téléphone</span><input class="input" formControlName="phone" /></label><label><span class="field-label">Date d’embauche</span><input class="input" type="date" formControlName="hireDate" /></label><label><span class="field-label">Département</span><select class="input" formControlName="departmentId"><option [ngValue]="null">Aucun</option>@for (item of departments(); track item.id) { <option [ngValue]="item.id">{{ item.name }}</option> }</select></label></div><div class="mt-6 flex justify-end gap-2"><button type="button" class="btn-ghost" (click)="closeEditor()">Annuler</button><button class="btn-primary !w-auto px-5" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button></div></form></div> }
+</app-shell>
+
+<!-- Fiche employé -->
+@if (selected(); as employee) {
+  <div class="dialog-backdrop" (click)="selected.set(null)" (keydown.escape)="selected.set(null)" tabindex="-1">
+    <article class="dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="avatar h-11 w-11 text-sm">{{ employee.firstName[0] }}{{ employee.lastName[0] }}</span>
+          <div>
+            <h2 class="dialog-title">{{ employee.firstName }} {{ employee.lastName }}</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">Matricule {{ employee.employeeNumber }}</p>
+          </div>
+        </div>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="selected.set(null)" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+      <dl class="mt-5 divide-y divide-slate-100 border-t border-slate-100 text-sm dark:divide-slate-800 dark:border-slate-800">
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="flex items-center gap-2 text-slate-500 dark:text-slate-400"><app-icon name="briefcase" class="h-4 w-4" /> Poste</dt>
+          <dd class="text-right font-medium">{{ employee.jobTitle || '—' }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="flex items-center gap-2 text-slate-500 dark:text-slate-400"><app-icon name="building" class="h-4 w-4" /> Département</dt>
+          <dd class="text-right font-medium">{{ employee.departmentName || '—' }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="flex items-center gap-2 text-slate-500 dark:text-slate-400"><app-icon name="phone" class="h-4 w-4" /> Téléphone</dt>
+          <dd class="text-right font-medium">{{ employee.phone || '—' }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="flex items-center gap-2 text-slate-500 dark:text-slate-400"><app-icon name="user" class="h-4 w-4" /> Manager</dt>
+          <dd class="text-right font-medium">{{ employee.managerName || '—' }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <dt class="flex items-center gap-2 text-slate-500 dark:text-slate-400"><app-icon name="calendar" class="h-4 w-4" /> Embauche</dt>
+          <dd class="text-right font-medium">{{ employee.hireDate ? (employee.hireDate | date: 'dd/MM/yyyy') : '—' }}</dd>
+        </div>
+      </dl>
+      <div class="dialog-actions">
+        <button type="button" class="btn-secondary" (click)="selected.set(null)">Fermer</button>
+        <button type="button" class="btn-primary !w-auto" (click)="selected.set(null); openEdit(employee)">
+          <app-icon name="pencil" class="h-4 w-4" />
+          Modifier
+        </button>
+      </div>
+    </article>
+  </div>
+}
+
+<!-- Création / modification -->
+@if (editing(); as employee) {
+  <div class="dialog-backdrop" (click)="closeEditor()" (keydown.escape)="closeEditor()" tabindex="-1">
+    <form class="dialog max-w-2xl" role="dialog" aria-modal="true" [formGroup]="form" (ngSubmit)="save()" (click)="$event.stopPropagation()" novalidate>
+      <div class="flex items-start justify-between gap-4">
+        <h2 class="dialog-title">{{ employee.id ? 'Modifier l’employé' : 'Nouvel employé' }}</h2>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="closeEditor()" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+      <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        <label>
+          <span class="field-label">Matricule</span>
+          <input class="input" formControlName="employeeNumber" [class.input-invalid]="invalid('employeeNumber')" />
+          @if (invalid('employeeNumber')) { <span class="field-error">Matricule obligatoire (20 caractères max.).</span> }
+        </label>
+        <label>
+          <span class="field-label">Prénom</span>
+          <input class="input" formControlName="firstName" [class.input-invalid]="invalid('firstName')" />
+          @if (invalid('firstName')) { <span class="field-error">Prénom obligatoire.</span> }
+        </label>
+        <label>
+          <span class="field-label">Nom</span>
+          <input class="input" formControlName="lastName" [class.input-invalid]="invalid('lastName')" />
+          @if (invalid('lastName')) { <span class="field-error">Nom obligatoire.</span> }
+        </label>
+        <label>
+          <span class="field-label">Poste</span>
+          <input class="input" formControlName="jobTitle" />
+        </label>
+        <label>
+          <span class="field-label">Téléphone</span>
+          <input class="input" formControlName="phone" />
+        </label>
+        <label>
+          <span class="field-label">Date d’embauche</span>
+          <input class="input" type="date" formControlName="hireDate" />
+        </label>
+        <label>
+          <span class="field-label">Département</span>
+          <select class="input" formControlName="departmentId">
+            <option [ngValue]="null">Aucun</option>
+            @for (item of departments(); track item.id) {
+              <option [ngValue]="item.id">{{ item.name }}</option>
+            }
+          </select>
+        </label>
+      </div>
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeEditor()">Annuler</button>
+        <button type="submit" class="btn-primary !w-auto" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </div>
+    </form>
+  </div>
+}

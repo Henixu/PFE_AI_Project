@@ -8,12 +8,13 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Alert } from '../../../shared/components/alert/alert';
 import { AuthShell } from '../../../shared/components/auth-shell/auth-shell';
+import { Icon } from '../../../shared/components/icon/icon';
 
 const STRENGTH_LABELS = ['Trop faible', 'Faible', 'Moyen', 'Bon', 'Excellent'];
 
 @Component({
   selector: 'app-reset-password',
-  imports: [ReactiveFormsModule, RouterLink, AuthShell, Alert],
+  imports: [ReactiveFormsModule, RouterLink, AuthShell, Alert, Icon],
   templateUrl: './reset-password.html'
 })
 export class ResetPassword {

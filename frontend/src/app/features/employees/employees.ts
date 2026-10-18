@@ -8,12 +8,14 @@ import { Employee, EmployeePayload, EmployeeQuery } from '../../core/models/empl
 import { EmployeesService } from '../../core/services/employees.service';
 import { ToastService } from '../../core/services/toast.service';
 import { Alert } from '../../shared/components/alert/alert';
-import { TopBar } from '../../shared/components/top-bar/top-bar';
+import { AppShell } from '../../shared/components/app-shell/app-shell';
+import { Icon } from '../../shared/components/icon/icon';
+import { IconName } from '../../shared/components/icon/icons';
 import { PageResponse } from '../../core/models/admin-user.models';
 
 @Component({
   selector: 'app-employees',
-  imports: [ReactiveFormsModule, RouterLink, DatePipe, TopBar, Alert],
+  imports: [ReactiveFormsModule, RouterLink, DatePipe, AppShell, Alert, Icon],
   templateUrl: './employees.html'
 })
 export class Employees {
@@ -58,7 +60,7 @@ export class Employees {
   protected status(value: string): void { this.patch({ active: value === '' ? null : value === 'true', page: 0 }); }
   protected department(value: string): void { this.patch({ departmentId: value ? Number(value) : null, page: 0 }); }
   protected sort(column: string): void { const q = this.query(); this.patch({ sortBy: column, direction: q.sortBy === column && q.direction === 'asc' ? 'desc' : 'asc', page: 0 }); }
-  protected sortIcon(column: string): string { const q = this.query(); return q.sortBy !== column ? '↕' : q.direction === 'asc' ? '↑' : '↓'; }
+  protected sortIcon(column: string): IconName { const q = this.query(); return q.sortBy !== column ? 'chevron-up-down' : q.direction === 'asc' ? 'chevron-up' : 'chevron-down'; }
   protected goTo(page: number): void { const r = this.result(); if (r && page >= 0 && page < r.totalPages) this.patch({ page }); }
   protected patch(value: Partial<EmployeeQuery>): void { this.query.update((q) => ({ ...q, ...value })); this.load(); }
 

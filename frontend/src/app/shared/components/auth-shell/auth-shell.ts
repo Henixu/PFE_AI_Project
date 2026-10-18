@@ -1,11 +1,12 @@
 import { Component, input } from '@angular/core';
 
+import { Icon } from '../icon/icon';
 import { ThemeToggle } from '../theme-toggle/theme-toggle';
 
-/** Mise en page commune des écrans d'authentification (panneau de marque + carte de formulaire). */
+/** Mise en page commune des écrans d'authentification (panneau de marque + formulaire). */
 @Component({
   selector: 'app-auth-shell',
-  imports: [ThemeToggle],
+  imports: [ThemeToggle, Icon],
   templateUrl: './auth-shell.html'
 })
 export class AuthShell {

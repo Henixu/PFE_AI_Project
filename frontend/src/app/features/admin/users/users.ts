@@ -11,7 +11,9 @@ import { AdminUsersService } from '../../../core/services/admin-users.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Alert } from '../../../shared/components/alert/alert';
-import { TopBar } from '../../../shared/components/top-bar/top-bar';
+import { AppShell } from '../../../shared/components/app-shell/app-shell';
+import { Icon } from '../../../shared/components/icon/icon';
+import { IconName } from '../../../shared/components/icon/icons';
 
 type DialogKind = 'create' | 'edit' | 'role' | 'status' | 'link';
 
@@ -28,15 +30,15 @@ const ROLES: { value: Role; label: string; description: string }[] = [
 ];
 
 const ROLE_BADGES: Record<Role, string> = {
-  ADMIN: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-  HR: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300',
-  MANAGER: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  EMPLOYEE: 'bg-slate-100 text-slate-700 dark:bg-white/10 dark:text-slate-300'
+  ADMIN: 'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/20',
+  HR: 'bg-violet-50 text-violet-700 ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-400/20',
+  MANAGER: 'bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-400/20',
+  EMPLOYEE: 'bg-slate-50 text-slate-600 ring-slate-500/20 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-400/20'
 };
 
 @Component({
   selector: 'app-admin-users',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink, DatePipe, TopBar, Alert],
+  imports: [ReactiveFormsModule, FormsModule, RouterLink, DatePipe, AppShell, Alert, Icon],
   templateUrl: './users.html'
 })
 export class AdminUsers {
@@ -143,9 +145,9 @@ export class AdminUsers {
     });
   }
 
-  protected sortIcon(column: string): string {
+  protected sortIcon(column: string): IconName {
     const q = this.query();
-    return q.sortBy !== column ? '↕' : q.direction === 'asc' ? '↑' : '↓';
+    return q.sortBy !== column ? 'chevron-up-down' : q.direction === 'asc' ? 'chevron-up' : 'chevron-down';
   }
 
   protected goTo(page: number): void {
@@ -253,7 +255,7 @@ export class AdminUsers {
       return;
     }
     this.run(this.api.linkEmployee(this.dialog()!.user!.id, employeeId), (u) =>
-      this.toast.success('Employé associé', `${u.email} ↔ ${u.employeeName}`)
+      this.toast.success('Employé associé', `${u.email} est associé à ${u.employeeName}.`)
     );
   }
 

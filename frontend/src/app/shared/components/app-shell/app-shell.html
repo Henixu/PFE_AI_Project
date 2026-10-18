@@ -1,0 +1,79 @@
+<div class="min-h-screen lg:pl-64">
+  <!-- Fond du menu mobile -->
+  @if (menuOpen()) {
+    <div class="fixed inset-0 z-40 bg-slate-950/40 animate-fade-in lg:hidden" (click)="menuOpen.set(false)"></div>
+  }
+
+  <!-- Barre latérale -->
+  <aside
+    class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0"
+    [class.-translate-x-full]="!menuOpen()"
+    aria-label="Navigation principale"
+  >
+    <div class="flex h-16 shrink-0 items-center justify-between gap-2.5 border-b border-slate-200 px-5 dark:border-slate-800">
+      <a routerLink="/dashboard" class="flex items-center gap-2.5">
+        <span class="grid h-8 w-8 place-items-center rounded-md bg-brand-600 text-sm font-bold text-white">S</span>
+        <span class="font-semibold tracking-tight text-slate-900 dark:text-white">SopraHR Interne</span>
+      </a>
+      <button type="button" class="btn-icon lg:hidden" (click)="menuOpen.set(false)" aria-label="Fermer le menu">
+        <app-icon name="x" class="h-5 w-5" />
+      </button>
+    </div>
+
+    <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5">
+      @for (group of nav(); track $index) {
+        <div>
+          @if (group.title) {
+            <p class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              {{ group.title }}
+            </p>
+          }
+          <ul class="space-y-0.5">
+            @for (item of group.items; track item.route) {
+              <li>
+                <a
+                  [routerLink]="item.route"
+                  routerLinkActive="!bg-brand-50 !text-brand-700 dark:!bg-brand-500/10 dark:!text-brand-300"
+                  [routerLinkActiveOptions]="{ exact: !!item.exact }"
+                  (click)="menuOpen.set(false)"
+                  class="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                >
+                  <app-icon [name]="item.icon" class="h-5 w-5" />
+                  {{ item.label }}
+                </a>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </nav>
+
+    <div class="shrink-0 border-t border-slate-200 p-3 dark:border-slate-800">
+      <div class="flex items-center gap-3 rounded-md px-2 py-2">
+        <span class="avatar h-9 w-9 text-xs">{{ initials() }}</span>
+        <div class="min-w-0 flex-1 leading-tight">
+          <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ displayName() }}</p>
+          <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ roleLabel() }}</p>
+        </div>
+        <button type="button" class="btn-icon" (click)="logout()" title="Se déconnecter" aria-label="Se déconnecter">
+          <app-icon name="arrow-right-on-rectangle" class="h-5 w-5" />
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- En-tête -->
+  <header
+    class="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-6 lg:px-8"
+  >
+    <button type="button" class="btn-icon lg:hidden" (click)="menuOpen.set(true)" aria-label="Ouvrir le menu">
+      <app-icon name="bars" class="h-5 w-5" />
+    </button>
+    <div class="flex-1"></div>
+    <app-theme-toggle />
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <ng-content />
+  </main>
+</div>
