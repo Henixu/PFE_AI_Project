@@ -38,6 +38,9 @@ public class Employee extends AuditableEntity {
     @Column(name = "hire_date")
     private LocalDate hireDate;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true)
     private User user;

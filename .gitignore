@@ -1,3 +1,7 @@
+launcher/publish/
+launcher/bin/
+launcher/obj/
+PFE-Project-Launcher.exe
 # Secrets
 .env
 *.env

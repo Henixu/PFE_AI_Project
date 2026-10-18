@@ -8,10 +8,17 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import com.soprahr.interne.entity.Employee;
 
-public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+public interface EmployeeRepository extends JpaRepository<Employee, Long>, JpaSpecificationExecutor<Employee> {
+
+    Optional<Employee> findByEmployeeNumberIgnoreCase(String employeeNumber);
+
+    @Override
+    @EntityGraph(attributePaths = {"department", "manager"})
+    Page<Employee> findAll(org.springframework.data.jpa.domain.Specification<Employee> specification, Pageable pageable);
 
     /** Charge département et manager en une requête (évite le N+1 des listes). */
     @EntityGraph(attributePaths = {"department", "manager"})
