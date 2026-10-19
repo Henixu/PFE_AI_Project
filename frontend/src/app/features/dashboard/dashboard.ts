@@ -60,9 +60,16 @@ const MODULES: ModuleTile[] = [
     route: '/employees',
     routeRoles: ['ADMIN', 'HR']
   },
-  { title: 'Départements', description: 'Organisation et équipes.', icon: 'building', roles: ['ADMIN', 'HR'] },
-  { title: 'Tâches', description: 'Suivi, priorités et échéances.', icon: 'clipboard' },
-  { title: 'Congés', description: 'Demandes et validations.', icon: 'calendar' },
+  {
+    title: 'Départements',
+    description: 'Organisation et équipes.',
+    icon: 'building',
+    roles: ['ADMIN', 'HR'],
+    route: '/departments',
+    routeRoles: ['ADMIN', 'HR']
+  },
+  { title: 'Tâches', description: 'Suivi, priorités et échéances.', icon: 'clipboard', route: '/tasks' },
+  { title: 'Congés', description: 'Demandes et validations.', icon: 'calendar', route: '/leaves' },
   { title: 'Documents', description: 'Contrats et fichiers partagés.', icon: 'document' },
   { title: 'Notifications', description: 'Alertes et rappels.', icon: 'bell' }
 ];

@@ -1,0 +1,249 @@
+<app-shell>
+  <nav class="mb-4 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400" aria-label="Fil d'Ariane">
+    <a routerLink="/dashboard" class="hover:text-slate-900 dark:hover:text-white">Tableau de bord</a>
+    <app-icon name="chevron-right" class="h-3.5 w-3.5" />
+    <span class="font-medium text-slate-900 dark:text-white">Mes congés</span>
+  </nav>
+
+  <div class="page-header animate-fade-in">
+    <div>
+      <h1 class="page-title">Mes congés</h1>
+      <p class="page-subtitle">Déposez une demande et suivez les décisions qui la concernent.</p>
+    </div>
+    <button type="button" class="btn-primary sm:w-auto" (click)="openForm()">
+      <app-icon name="plus" class="h-4 w-4" [strokeWidth]="2" />
+      Nouvelle demande
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="mb-6">
+      <app-alert type="error" title="Chargement impossible">
+        {{ error() }}
+        <button type="button" class="ml-1 font-semibold underline underline-offset-2" (click)="load()">Réessayer</button>
+      </app-alert>
+    </div>
+  }
+
+  <section class="card overflow-hidden animate-fade-in-up">
+    <div class="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:grid-cols-[220px_150px]">
+      <select class="input" aria-label="Filtrer par statut" (change)="status($any($event.target).value)">
+        <option value="">Tous les statuts</option>
+        @for (s of statuses; track s) {
+          <option [value]="s">{{ statusLabels[s] }}</option>
+        }
+      </select>
+      <select class="input" aria-label="Lignes par page" (change)="patch({ size: +$any($event.target).value, page: 0 })">
+        <option value="10">10 par page</option>
+        <option value="25">25 par page</option>
+        <option value="50">50 par page</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="data-table min-w-[900px]">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>
+              <button type="button" (click)="sort('startDate')" class="sort-btn">
+                Période <app-icon [name]="sortIcon('startDate')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Motif</th>
+            <th>
+              <button type="button" (click)="sort('status')" class="sort-btn">
+                Statut <app-icon [name]="sortIcon('status')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Décision</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading() && !result()) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <tr>
+                <td colspan="6"><div class="h-5 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div></td>
+              </tr>
+            }
+          } @else {
+            @for (request of result()?.content; track request.id) {
+              <tr>
+                <td class="whitespace-nowrap">{{ typeLabels[request.type] }}</td>
+                <td class="whitespace-nowrap">
+                  <span class="font-medium text-slate-900 dark:text-white">{{ request.startDate | date: 'dd/MM/yyyy' }} au {{ request.endDate | date: 'dd/MM/yyyy' }}</span>
+                  <span class="block text-xs text-slate-500 dark:text-slate-400">{{ request.durationDays }} jour(s)</span>
+                </td>
+                <td class="max-w-xs truncate">{{ request.reason }}</td>
+                <td><span [class]="statusClass(request.status)">{{ statusLabels[request.status] }}</span></td>
+                <td class="text-xs text-slate-500 dark:text-slate-400">
+                  @if (request.decidedBy) {
+                    <span class="block text-sm text-slate-700 dark:text-slate-200">{{ request.decidedBy }}</span>
+                    <span class="block">{{ request.decidedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>
+                  <div class="flex justify-end gap-0.5">
+                    <button type="button" class="btn-icon" (click)="selected.set(request)" title="Consulter" aria-label="Consulter">
+                      <app-icon name="eye" class="h-4 w-4" />
+                    </button>
+                    @if (request.canCancel) {
+                      <button type="button" class="btn-icon hover:!text-rose-600 dark:hover:!text-rose-400" (click)="confirmCancel(request)" title="Annuler la demande" aria-label="Annuler la demande">
+                        <app-icon name="x-circle" class="h-4 w-4" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" class="!py-14 text-center">
+                  <span class="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                    <app-icon name="calendar" class="h-5 w-5" />
+                  </span>
+                  <p class="font-medium text-slate-900 dark:text-white">Aucune demande</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Vos demandes de congé apparaîtront ici.</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (result(); as r) {
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row">
+        <p>{{ from() }}–{{ to() }} sur {{ r.totalElements }} demande(s)</p>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page - 1)" [disabled]="r.page === 0" aria-label="Page précédente">
+            <app-icon name="chevron-left" class="h-4 w-4" />
+          </button>
+          <span class="px-1 font-medium text-slate-700 dark:text-slate-200">Page {{ r.page + 1 }} sur {{ r.totalPages || 1 }}</span>
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages" aria-label="Page suivante">
+            <app-icon name="chevron-right" class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</app-shell>
+
+<!-- Détail d'une demande -->
+@if (selected(); as request) {
+  <div class="dialog-backdrop" (click)="selected.set(null)" (keydown.escape)="selected.set(null)" tabindex="-1">
+    <article class="dialog max-w-xl" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="dialog-title">{{ typeLabels[request.type] }}</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            Du {{ request.startDate | date: 'dd/MM/yyyy' }} au {{ request.endDate | date: 'dd/MM/yyyy' }} ({{ request.durationDays }} jour(s))
+          </p>
+        </div>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="selected.set(null)" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+      <div class="mt-3"><span [class]="statusClass(request.status)">{{ statusLabels[request.status] }}</span></div>
+      <h3 class="section-label mt-5">Motif</h3>
+      <p class="mt-1 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200">{{ request.reason }}</p>
+
+      <h3 class="section-label mt-5">Décision</h3>
+      @if (request.decidedBy) {
+        <dl class="mt-1 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+          <div class="flex items-center justify-between gap-4 py-2.5">
+            <dt class="text-slate-500 dark:text-slate-400">Décidée par</dt>
+            <dd class="text-right font-medium">{{ request.decidedBy }}</dd>
+          </div>
+          <div class="flex items-center justify-between gap-4 py-2.5">
+            <dt class="text-slate-500 dark:text-slate-400">Le</dt>
+            <dd class="text-right font-medium">{{ request.decidedAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+          </div>
+          <div class="flex items-start justify-between gap-4 py-2.5">
+            <dt class="text-slate-500 dark:text-slate-400">Commentaire</dt>
+            <dd class="text-right font-medium">{{ request.decisionComment || '—' }}</dd>
+          </div>
+        </dl>
+      } @else {
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {{ request.status === 'PENDING' ? 'Aucune décision pour le moment.' : 'Aucune décision enregistrée.' }}
+        </p>
+      }
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="selected.set(null)">Fermer</button>
+      </div>
+    </article>
+  </div>
+}
+
+<!-- Nouvelle demande -->
+@if (formOpen()) {
+  <div class="dialog-backdrop" (click)="closeForm()" (keydown.escape)="closeForm()" tabindex="-1">
+    <form class="dialog max-w-xl" role="dialog" aria-modal="true" [formGroup]="form" (ngSubmit)="submit()" (click)="$event.stopPropagation()" novalidate>
+      <div class="flex items-start justify-between gap-4">
+        <h2 class="dialog-title">Nouvelle demande de congé</h2>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="closeForm()" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+
+      @if (formError()) {
+        <div class="mt-4">
+          <app-alert type="error">{{ formError() }}</app-alert>
+        </div>
+      }
+
+      <div class="mt-5 grid gap-4 sm:grid-cols-2">
+        <label class="block sm:col-span-2">
+          <span class="field-label">Type de congé</span>
+          <select class="input" formControlName="type">
+            @for (t of types; track t) {
+              <option [value]="t">{{ typeLabels[t] }}</option>
+            }
+          </select>
+        </label>
+        <label class="block">
+          <span class="field-label">Date de début</span>
+          <input class="input" type="date" formControlName="startDate" [class.input-invalid]="invalid('startDate')" />
+          @if (invalid('startDate')) { <span class="field-error">Date de début obligatoire.</span> }
+        </label>
+        <label class="block">
+          <span class="field-label">Date de fin</span>
+          <input class="input" type="date" formControlName="endDate" [class.input-invalid]="invalid('endDate') || rangeInvalid()" />
+          @if (invalid('endDate')) { <span class="field-error">Date de fin obligatoire.</span> }
+          @if (rangeInvalid()) { <span class="field-error">La date de fin doit être postérieure ou égale à la date de début.</span> }
+        </label>
+        <label class="block sm:col-span-2">
+          <span class="field-label">Motif</span>
+          <textarea class="input" rows="3" formControlName="reason" maxlength="500" [class.input-invalid]="invalid('reason')"></textarea>
+          @if (invalid('reason')) { <span class="field-error">Motif obligatoire (500 caractères max.).</span> }
+        </label>
+      </div>
+
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeForm()">Annuler</button>
+        <button type="submit" class="btn-primary !w-auto" [disabled]="saving()">{{ saving() ? 'Envoi…' : 'Envoyer la demande' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Confirmation d'annulation -->
+@if (cancelling(); as request) {
+  <div class="dialog-backdrop" (click)="closeCancel()" (keydown.escape)="closeCancel()" tabindex="-1">
+    <div class="dialog" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h2 class="dialog-title">Annuler la demande</h2>
+      <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
+        Votre demande du {{ request.startDate | date: 'dd/MM/yyyy' }} au {{ request.endDate | date: 'dd/MM/yyyy' }} sera retirée. Cette action est définitive.
+      </p>
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeCancel()">Conserver</button>
+        <button type="button" class="btn-danger" [disabled]="cancelBusy()" (click)="cancel()">
+          {{ cancelBusy() ? 'Annulation…' : 'Annuler la demande' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

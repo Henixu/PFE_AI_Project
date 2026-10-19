@@ -20,7 +20,16 @@ const NAV: { title?: string; items: NavItem[] }[] = [
   {
     items: [
       { label: 'Tableau de bord', route: '/dashboard', icon: 'squares' },
-      { label: 'Employés', route: '/employees', icon: 'users', roles: ['ADMIN', 'HR'] }
+      { label: 'Employés', route: '/employees', icon: 'users', roles: ['ADMIN', 'HR'] },
+      { label: 'Départements', route: '/departments', icon: 'building', roles: ['ADMIN', 'HR'] },
+      { label: 'Tâches', route: '/tasks', icon: 'clipboard' }
+    ]
+  },
+  {
+    title: 'Congés',
+    items: [
+      { label: 'Mes congés', route: '/leaves', icon: 'calendar', exact: true },
+      { label: 'Demandes à traiter', route: '/leaves/review', icon: 'clock', roles: ['ADMIN', 'HR', 'MANAGER'] }
     ]
   },
   {

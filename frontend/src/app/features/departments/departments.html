@@ -1,0 +1,269 @@
+<app-shell>
+  <nav class="mb-4 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400" aria-label="Fil d'Ariane">
+    <a routerLink="/dashboard" class="hover:text-slate-900 dark:hover:text-white">Tableau de bord</a>
+    <app-icon name="chevron-right" class="h-3.5 w-3.5" />
+    <span class="font-medium text-slate-900 dark:text-white">Départements</span>
+  </nav>
+
+  <div class="page-header animate-fade-in">
+    <div>
+      <h1 class="page-title">Départements</h1>
+      <p class="page-subtitle">Organisez l'entreprise en équipes et suivez leurs effectifs.</p>
+    </div>
+    <button type="button" class="btn-primary sm:w-auto" (click)="openCreate()">
+      <app-icon name="plus" class="h-4 w-4" [strokeWidth]="2" />
+      Nouveau département
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="mb-6">
+      <app-alert type="error" title="Chargement impossible">
+        {{ error() }}
+        <button type="button" class="ml-1 font-semibold underline underline-offset-2" (click)="load()">Réessayer</button>
+      </app-alert>
+    </div>
+  }
+
+  <section class="card overflow-hidden animate-fade-in-up">
+    <!-- Filtres -->
+    <div class="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:grid-cols-[1fr_150px]">
+      <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+          <app-icon name="search" class="h-4 w-4" />
+        </span>
+        <input
+          type="search"
+          class="input pl-9"
+          placeholder="Nom ou description"
+          aria-label="Rechercher un département"
+          (input)="search($any($event.target).value)"
+        />
+      </div>
+      <select class="input" aria-label="Lignes par page" (change)="patch({ size: +$any($event.target).value, page: 0 })">
+        <option value="10">10 par page</option>
+        <option value="25">25 par page</option>
+        <option value="50">50 par page</option>
+      </select>
+    </div>
+
+    <!-- Tableau -->
+    <div class="overflow-x-auto">
+      <table class="data-table min-w-[720px]">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" (click)="sort('name')" class="sort-btn">
+                Département <app-icon [name]="sortIcon('name')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Description</th>
+            <th class="text-right">Employés</th>
+            <th>
+              <button type="button" (click)="sort('createdAt')" class="sort-btn">
+                Création <app-icon [name]="sortIcon('createdAt')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading() && !result()) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <tr>
+                <td colspan="5"><div class="h-5 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div></td>
+              </tr>
+            }
+          } @else {
+            @for (department of result()?.content; track department.id) {
+              <tr>
+                <td>
+                  <button type="button" class="group flex items-center gap-3 text-left" (click)="openDetail(department)">
+                    <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
+                      <app-icon name="building" class="h-4 w-4" />
+                    </span>
+                    <span class="font-medium text-slate-900 group-hover:text-brand-600 dark:text-white dark:group-hover:text-brand-400">
+                      {{ department.name }}
+                    </span>
+                  </button>
+                </td>
+                <td class="max-w-xs truncate text-slate-500 dark:text-slate-400">{{ department.description || '—' }}</td>
+                <td class="text-right">
+                  <span [class]="department.employeeCount ? 'badge-brand' : 'badge-neutral'">{{ department.employeeCount }}</span>
+                </td>
+                <td class="whitespace-nowrap">{{ department.createdAt | date: 'dd/MM/yyyy' }}</td>
+                <td>
+                  <div class="flex justify-end gap-0.5">
+                    <button type="button" class="btn-icon" (click)="openDetail(department)" title="Consulter" aria-label="Consulter">
+                      <app-icon name="eye" class="h-4 w-4" />
+                    </button>
+                    <button type="button" class="btn-icon" (click)="openEdit(department)" title="Modifier" aria-label="Modifier">
+                      <app-icon name="pencil" class="h-4 w-4" />
+                    </button>
+                    <button type="button" class="btn-icon hover:!text-rose-600 dark:hover:!text-rose-400" (click)="confirmDelete(department)" title="Supprimer" aria-label="Supprimer">
+                      <app-icon name="trash" class="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="!py-14 text-center">
+                  <span class="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                    <app-icon name="building" class="h-5 w-5" />
+                  </span>
+                  <p class="font-medium text-slate-900 dark:text-white">Aucun département trouvé</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Modifiez votre recherche ou créez un département.</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    @if (result(); as r) {
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row">
+        <p>{{ from() }}–{{ to() }} sur {{ r.totalElements }} département(s)</p>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page - 1)" [disabled]="r.page === 0" aria-label="Page précédente">
+            <app-icon name="chevron-left" class="h-4 w-4" />
+          </button>
+          <span class="px-1 font-medium text-slate-700 dark:text-slate-200">Page {{ r.page + 1 }} sur {{ r.totalPages || 1 }}</span>
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages" aria-label="Page suivante">
+            <app-icon name="chevron-right" class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</app-shell>
+
+<!-- Fiche département -->
+@if (selected(); as department) {
+  <div class="dialog-backdrop" (click)="selected.set(null)" (keydown.escape)="selected.set(null)" tabindex="-1">
+    <article class="dialog max-w-xl" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <span class="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-300">
+            <app-icon name="building" class="h-5 w-5" />
+          </span>
+          <div>
+            <h2 class="dialog-title">{{ department.name }}</h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ department.employeeCount }} employé(s)</p>
+          </div>
+        </div>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="selected.set(null)" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+
+      @if (department.description) {
+        <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">{{ department.description }}</p>
+      }
+
+      <h3 class="section-label mt-6">Employés associés</h3>
+      <div class="mt-2 max-h-72 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-800">
+        @if (detailLoading()) {
+          <div class="space-y-2 p-3">
+            @for (i of [1, 2, 3]; track i) {
+              <div class="h-8 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div>
+            }
+          </div>
+        } @else {
+          <ul class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (employee of department.employees; track employee.id) {
+              <li class="flex items-center gap-3 px-3 py-2.5">
+                <span class="avatar h-8 w-8 text-xs">{{ employee.fullName.split(' ')[0][0] }}{{ employee.fullName.split(' ').at(-1)?.[0] }}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-sm font-medium text-slate-900 dark:text-white" [class.!text-slate-400]="!employee.active">{{ employee.fullName }}</p>
+                  <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ employee.employeeNumber }}{{ employee.jobTitle ? ' - ' + employee.jobTitle : '' }}</p>
+                </div>
+                @if (!employee.active) {
+                  <span class="badge-neutral">Désactivé</span>
+                }
+              </li>
+            } @empty {
+              <li class="px-3 py-8 text-center text-sm text-slate-500 dark:text-slate-400">Aucun employé n'est rattaché à ce département.</li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="selected.set(null)">Fermer</button>
+        <button type="button" class="btn-primary !w-auto" (click)="selected.set(null); openEdit(department)">
+          <app-icon name="pencil" class="h-4 w-4" />
+          Modifier
+        </button>
+      </div>
+    </article>
+  </div>
+}
+
+<!-- Création / modification -->
+@if (editor(); as current) {
+  <div class="dialog-backdrop" (click)="closeEditor()" (keydown.escape)="closeEditor()" tabindex="-1">
+    <form class="dialog" role="dialog" aria-modal="true" [formGroup]="form" (ngSubmit)="save()" (click)="$event.stopPropagation()" novalidate>
+      <div class="flex items-start justify-between gap-4">
+        <h2 class="dialog-title">{{ current.id === null ? 'Nouveau département' : 'Modifier le département' }}</h2>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="closeEditor()" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+
+      @if (formError()) {
+        <div class="mt-4">
+          <app-alert type="error">{{ formError() }}</app-alert>
+        </div>
+      }
+
+      <div class="mt-5 space-y-4">
+        <label class="block">
+          <span class="field-label">Nom</span>
+          <input class="input" formControlName="name" maxlength="100" [class.input-invalid]="invalid('name')" />
+          @if (invalid('name')) { <span class="field-error">Nom obligatoire (100 caractères max.).</span> }
+        </label>
+        <label class="block">
+          <span class="field-label">Description</span>
+          <textarea class="input" rows="3" formControlName="description" maxlength="500" [class.input-invalid]="invalid('description')"></textarea>
+          @if (invalid('description')) { <span class="field-error">500 caractères maximum.</span> }
+        </label>
+      </div>
+
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeEditor()">Annuler</button>
+        <button type="submit" class="btn-primary !w-auto" [disabled]="saving()">{{ saving() ? 'Enregistrement…' : 'Enregistrer' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (deleting(); as department) {
+  <div class="dialog-backdrop" (click)="closeDelete()" (keydown.escape)="closeDelete()" tabindex="-1">
+    <div class="dialog" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h2 class="dialog-title">Supprimer le département</h2>
+      <div class="mt-4">
+        @if (department.employeeCount > 0) {
+          <app-alert type="warning" title="Suppression impossible">
+            « {{ department.name }} » compte {{ department.employeeCount }} employé(s). Réaffectez-les à un autre département avant de le supprimer.
+          </app-alert>
+        } @else {
+          <p class="text-sm text-slate-600 dark:text-slate-300">
+            Vous allez supprimer « {{ department.name }} ». Cette action est définitive.
+          </p>
+        }
+      </div>
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeDelete()">{{ department.employeeCount > 0 ? 'Fermer' : 'Annuler' }}</button>
+        @if (department.employeeCount === 0) {
+          <button type="button" class="btn-danger" [disabled]="deleteBusy()" (click)="delete()">
+            {{ deleteBusy() ? 'Suppression…' : 'Supprimer' }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

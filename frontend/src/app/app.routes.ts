@@ -36,6 +36,28 @@ export const routes: Routes = [
     loadComponent: () => import('./features/employees/employees').then((m) => m.Employees)
   },
   {
+    path: 'departments',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'HR'] },
+    loadComponent: () => import('./features/departments/departments').then((m) => m.Departments)
+  },
+  {
+    path: 'tasks',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/tasks/tasks').then((m) => m.Tasks)
+  },
+  {
+    path: 'leaves',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/leaves/leaves').then((m) => m.Leaves)
+  },
+  {
+    path: 'leaves/review',
+    canActivate: [roleGuard],
+    data: { roles: ['ADMIN', 'HR', 'MANAGER'] },
+    loadComponent: () => import('./features/leaves/leave-review').then((m) => m.LeaveReview)
+  },
+  {
     path: 'admin',
     canActivate: [roleGuard],
     data: { roles: ['ADMIN'] },
