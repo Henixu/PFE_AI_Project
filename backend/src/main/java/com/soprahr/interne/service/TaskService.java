@@ -1,6 +1,7 @@
 package com.soprahr.interne.service;
 
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -26,6 +27,7 @@ import com.soprahr.interne.dto.TaskRequest;
 import com.soprahr.interne.dto.TaskResponse;
 import com.soprahr.interne.entity.Employee;
 import com.soprahr.interne.entity.Task;
+import com.soprahr.interne.entity.enums.NotificationType;
 import com.soprahr.interne.entity.enums.Role;
 import com.soprahr.interne.entity.enums.TaskPriority;
 import com.soprahr.interne.entity.enums.TaskStatus;
@@ -56,6 +58,7 @@ public class TaskService {
     private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> SORTABLE = Set.of("dueDate", "createdAt", "updatedAt", "title");
     private static final Set<TaskStatus> OPEN = EnumSet.of(TaskStatus.TODO, TaskStatus.IN_PROGRESS);
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /** Transitions autorisées pour qui gère la tâche. */
     private static final Map<TaskStatus, Set<TaskStatus>> TRANSITIONS = Map.of(
@@ -80,12 +83,15 @@ public class TaskService {
     private final EmployeeRepository employees;
     private final ActorResolver actors;
     private final AuditService audit;
+    private final NotificationPublisher notifier;
 
-    public TaskService(TaskRepository tasks, EmployeeRepository employees, ActorResolver actors, AuditService audit) {
+    public TaskService(TaskRepository tasks, EmployeeRepository employees, ActorResolver actors, AuditService audit,
+            NotificationPublisher notifier) {
         this.tasks = tasks;
         this.employees = employees;
         this.actors = actors;
         this.audit = audit;
+        this.notifier = notifier;
     }
 
     @Transactional(readOnly = true)
@@ -122,6 +128,7 @@ public class TaskService {
         task = tasks.save(task);
         audit.record(actorEmail, "TASK_CREATE", "Task", task.getId(), "title=" + task.getTitle()
                 + (task.getAssignee() != null ? ", assigneeId=" + task.getAssignee().getId() : ""));
+        notifyAssignment(task, access.actor());
         return toResponse(task, access, today);
     }
 
@@ -136,7 +143,8 @@ public class TaskService {
             assertDueDateNotPast(request.dueDate(), today);
         }
         Long currentAssignee = task.getAssignee() == null ? null : task.getAssignee().getId();
-        if (!Objects.equals(request.assigneeId(), currentAssignee)) {
+        boolean reassigned = !Objects.equals(request.assigneeId(), currentAssignee);
+        if (reassigned) {
             task.setAssignee(resolveAssignee(request.assigneeId(), access));
         }
         task.setTitle(request.title().trim());
@@ -145,7 +153,10 @@ public class TaskService {
         task.setDueDate(request.dueDate());
         audit.record(actorEmail, "TASK_UPDATE", "Task", id, "title=" + task.getTitle()
                 + ", priority=" + task.getPriority()
-                + (!Objects.equals(request.assigneeId(), currentAssignee) ? ", assigneeId=" + request.assigneeId() : ""));
+                + (reassigned ? ", assigneeId=" + request.assigneeId() : ""));
+        if (reassigned) {
+            notifyAssignment(task, access.actor());
+        }
         return toResponse(task, access, today);
     }
 
@@ -173,6 +184,19 @@ public class TaskService {
                 .map(e -> new EmployeeOptionResponse(e.getId(), e.getEmployeeNumber(),
                         e.getFirstName() + " " + e.getLastName(), e.getJobTitle()))
                 .toList();
+    }
+
+    /** Informe le nouveau responsable (sauf s'il s'est affecté la tâche lui-même). */
+    private void notifyAssignment(Task task, CurrentActor actor) {
+        Employee assignee = task.getAssignee();
+        if (assignee == null || assignee.getId().equals(actor.employeeId())) {
+            return;
+        }
+        String assigner = actor.employee() == null ? actor.user().getEmail()
+                : actor.employee().getFirstName() + " " + actor.employee().getLastName();
+        String due = task.getDueDate() == null ? "" : " Échéance : " + task.getDueDate().format(DAY) + ".";
+        notifier.notifyEmployee(assignee, NotificationType.TASK_ASSIGNED, "Nouvelle tâche affectée",
+                assigner + " vous a affecté la tâche « " + task.getTitle() + " »." + due, "/tasks");
     }
 
     // ---- accès ----

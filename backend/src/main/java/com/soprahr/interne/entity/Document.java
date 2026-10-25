@@ -1,7 +1,11 @@
 package com.soprahr.interne.entity;
 
 import jakarta.persistence.Column;
+import com.soprahr.interne.entity.enums.DocumentVisibility;
+
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -32,6 +36,10 @@ public class Document extends AuditableEntity {
 
     @Column(name = "storage_path", nullable = false, unique = true, length = 500)
     private String storagePath;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private DocumentVisibility visibility = DocumentVisibility.PRIVATE;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)

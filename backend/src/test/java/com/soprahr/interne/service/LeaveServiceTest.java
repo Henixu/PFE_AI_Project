@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,6 +35,7 @@ import com.soprahr.interne.entity.LeaveRequest;
 import com.soprahr.interne.entity.User;
 import com.soprahr.interne.entity.enums.LeaveStatus;
 import com.soprahr.interne.entity.enums.LeaveType;
+import com.soprahr.interne.entity.enums.NotificationType;
 import com.soprahr.interne.entity.enums.Role;
 import com.soprahr.interne.exception.BusinessRuleException;
 import com.soprahr.interne.exception.ConflictException;
@@ -49,6 +51,7 @@ class LeaveServiceTest {
     @Mock EmployeeRepository employees;
     @Mock ActorResolver actors;
     @Mock AuditService audit;
+    @Mock NotificationPublisher notifier;
 
     private LeaveService service;
 
@@ -62,7 +65,7 @@ class LeaveServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new LeaveService(leaves, employees, actors, audit);
+        service = new LeaveService(leaves, employees, actors, audit, notifier);
         hrUser = TestData.user(1L, "hr@test.local", Role.HR);
         managerUser = TestData.user(2L, "manager@test.local", Role.MANAGER);
         otherManagerUser = TestData.user(5L, "other@test.local", Role.MANAGER);
@@ -154,6 +157,17 @@ class LeaveServiceTest {
     }
 
     @Test
+    void approvalNotifiesTheEmployeeWithTheComment() {
+        LeaveRequest leave = pending(1L, alice);
+        when(leaves.findForUpdateById(1L)).thenReturn(Optional.of(leave));
+
+        service.approve(1L, "Bon repos", "hr@test.local");
+
+        verify(notifier).notifyEmployee(eq(alice), eq(NotificationType.LEAVE_DECISION), eq("Congé approuvé"),
+                contains("approuvée. Commentaire : Bon repos"), eq("/leaves"));
+    }
+
+    @Test
     void rejectionRequiresAReason() {
         LeaveRequest leave = pending(1L, alice);
         when(leaves.findForUpdateById(1L)).thenReturn(Optional.of(leave));
@@ -164,6 +178,19 @@ class LeaveServiceTest {
         LeaveResponse r = service.reject(1L, "Période de livraison", "hr@test.local");
         assertEquals(LeaveStatus.REJECTED, r.status());
         verify(audit).record(eq("hr@test.local"), eq("LEAVE_REJECT"), eq("LeaveRequest"), eq(1L), any());
+        verify(notifier).notifyEmployee(eq(alice), eq(NotificationType.LEAVE_DECISION), eq("Congé refusé"),
+                contains("refusée. Commentaire : Période de livraison"), eq("/leaves"));
+    }
+
+    @Test
+    void noNotificationWhenTheDecisionIsRefused() {
+        LeaveRequest leave = pending(1L, alice);
+        when(leaves.findForUpdateById(1L)).thenReturn(Optional.of(leave));
+
+        assertThrows(BusinessRuleException.class, () -> service.reject(1L, " ", "hr@test.local"));
+        assertThrows(AccessDeniedException.class, () -> service.approve(1L, null, "other@test.local"));
+
+        verify(notifier, never()).notifyEmployee(any(), any(), any(), any(), any());
     }
 
     @Test

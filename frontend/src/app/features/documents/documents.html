@@ -1,0 +1,275 @@
+<app-shell>
+  <nav class="mb-4 flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400" aria-label="Fil d'Ariane">
+    <a routerLink="/dashboard" class="hover:text-slate-900 dark:hover:text-white">Tableau de bord</a>
+    <app-icon name="chevron-right" class="h-3.5 w-3.5" />
+    <span class="font-medium text-slate-900 dark:text-white">Documents</span>
+  </nav>
+
+  <div class="page-header animate-fade-in">
+    <div>
+      <h1 class="page-title">Documents</h1>
+      <p class="page-subtitle">Ajoutez des fichiers et consultez ceux auxquels vous avez accès.</p>
+    </div>
+    <button type="button" class="btn-primary sm:w-auto" (click)="openUpload()">
+      <app-icon name="arrow-up-tray" class="h-4 w-4" [strokeWidth]="2" />
+      Ajouter un document
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="mb-6">
+      <app-alert type="error" title="Chargement impossible">
+        {{ error() }}
+        <button type="button" class="ml-1 font-semibold underline underline-offset-2" (click)="load()">Réessayer</button>
+      </app-alert>
+    </div>
+  }
+
+  <section class="card overflow-hidden animate-fade-in-up">
+    <div class="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:grid-cols-[1fr_200px_150px]">
+      <div class="relative">
+        <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+          <app-icon name="search" class="h-4 w-4" />
+        </span>
+        <input
+          type="search"
+          class="input pl-9"
+          placeholder="Titre ou nom de fichier"
+          aria-label="Rechercher un document"
+          (input)="search($any($event.target).value)"
+        />
+      </div>
+      <select class="input" aria-label="Filtrer par propriétaire" (change)="patch({ mine: $any($event.target).value === 'mine', page: 0 })">
+        <option value="all">Tous les documents</option>
+        <option value="mine">Mes documents</option>
+      </select>
+      <select class="input" aria-label="Lignes par page" (change)="patch({ size: +$any($event.target).value, page: 0 })">
+        <option value="10">10 par page</option>
+        <option value="25">25 par page</option>
+        <option value="50">50 par page</option>
+      </select>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="data-table min-w-[900px]">
+        <thead>
+          <tr>
+            <th>
+              <button type="button" (click)="sort('title')" class="sort-btn">
+                Document <app-icon [name]="sortIcon('title')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Type</th>
+            <th>
+              <button type="button" (click)="sort('sizeBytes')" class="sort-btn">
+                Taille <app-icon [name]="sortIcon('sizeBytes')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Auteur</th>
+            <th>
+              <button type="button" (click)="sort('createdAt')" class="sort-btn">
+                Ajouté le <app-icon [name]="sortIcon('createdAt')" class="h-3.5 w-3.5" />
+              </button>
+            </th>
+            <th>Accès</th>
+            <th class="text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @if (loading() && !result()) {
+            @for (i of [1, 2, 3, 4]; track i) {
+              <tr>
+                <td colspan="7"><div class="h-5 animate-pulse rounded bg-slate-100 dark:bg-slate-800"></div></td>
+              </tr>
+            }
+          } @else {
+            @for (doc of result()?.content; track doc.id) {
+              <tr>
+                <td class="max-w-xs">
+                  <span class="block truncate font-medium text-slate-900 dark:text-white">{{ doc.title }}</span>
+                  <span class="block truncate text-xs text-slate-500 dark:text-slate-400">{{ doc.fileName }}</span>
+                </td>
+                <td><span class="badge-neutral">{{ extensionOf(doc.fileName) }}</span></td>
+                <td class="whitespace-nowrap">{{ formatSize(doc.sizeBytes) }}</td>
+                <td class="whitespace-nowrap">{{ doc.ownerName }}</td>
+                <td class="whitespace-nowrap">{{ doc.createdAt | date: 'dd/MM/yyyy HH:mm' }}</td>
+                <td><span [class]="visibilityClass(doc.visibility)">{{ visibilityLabels[doc.visibility] }}</span></td>
+                <td>
+                  <div class="flex justify-end gap-0.5">
+                    <button type="button" class="btn-icon" (click)="selected.set(doc)" title="Consulter les informations" aria-label="Consulter les informations">
+                      <app-icon name="eye" class="h-4 w-4" />
+                    </button>
+                    <button type="button" class="btn-icon" (click)="download(doc)" [disabled]="downloadingId() === doc.id" title="Télécharger" aria-label="Télécharger">
+                      <app-icon name="arrow-down-tray" class="h-4 w-4" />
+                    </button>
+                    @if (doc.canDelete) {
+                      <button type="button" class="btn-icon hover:!text-rose-600 dark:hover:!text-rose-400" (click)="confirmDelete(doc)" title="Supprimer" aria-label="Supprimer">
+                        <app-icon name="trash" class="h-4 w-4" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" class="!py-14 text-center">
+                  <span class="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
+                    <app-icon name="document" class="h-5 w-5" />
+                  </span>
+                  <p class="font-medium text-slate-900 dark:text-white">Aucun document</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Les documents auxquels vous avez accès apparaîtront ici.</p>
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+
+    @if (result(); as r) {
+      <div class="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row">
+        <p>{{ from() }}–{{ to() }} sur {{ r.totalElements }} document(s)</p>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page - 1)" [disabled]="r.page === 0" aria-label="Page précédente">
+            <app-icon name="chevron-left" class="h-4 w-4" />
+          </button>
+          <span class="px-1 font-medium text-slate-700 dark:text-slate-200">Page {{ r.page + 1 }} sur {{ r.totalPages || 1 }}</span>
+          <button type="button" class="btn-icon border border-slate-200 dark:border-slate-700" (click)="goTo(r.page + 1)" [disabled]="r.page + 1 >= r.totalPages" aria-label="Page suivante">
+            <app-icon name="chevron-right" class="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</app-shell>
+
+<!-- Informations d'un document -->
+@if (selected(); as doc) {
+  <div class="dialog-backdrop" (click)="selected.set(null)" (keydown.escape)="selected.set(null)" tabindex="-1">
+    <article class="dialog max-w-xl" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h2 class="dialog-title truncate">{{ doc.title }}</h2>
+          <p class="truncate text-sm text-slate-500 dark:text-slate-400">{{ doc.fileName }}</p>
+        </div>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="selected.set(null)" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+      <dl class="mt-4 divide-y divide-slate-100 text-sm dark:divide-slate-800">
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Nom du fichier</dt>
+          <dd class="break-all text-right font-medium">{{ doc.fileName }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Type</dt>
+          <dd class="text-right font-medium">{{ extensionOf(doc.fileName) }} ({{ doc.contentType || 'inconnu' }})</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Taille</dt>
+          <dd class="text-right font-medium">{{ formatSize(doc.sizeBytes) }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Auteur</dt>
+          <dd class="text-right font-medium">{{ doc.ownerName }}<span class="block text-xs font-normal text-slate-500 dark:text-slate-400">{{ doc.ownerEmail }}</span></dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Ajouté le</dt>
+          <dd class="text-right font-medium">{{ doc.createdAt | date: 'dd/MM/yyyy HH:mm' }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-4 py-2.5">
+          <dt class="text-slate-500 dark:text-slate-400">Accès</dt>
+          <dd class="text-right"><span [class]="visibilityClass(doc.visibility)">{{ visibilityLabels[doc.visibility] }}</span></dd>
+        </div>
+      </dl>
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="selected.set(null)">Fermer</button>
+        <button type="button" class="btn-primary !w-auto" (click)="download(doc)" [disabled]="downloadingId() === doc.id">
+          <app-icon name="arrow-down-tray" class="h-4 w-4" [strokeWidth]="2" />
+          Télécharger
+        </button>
+      </div>
+    </article>
+  </div>
+}
+
+<!-- Ajout d'un document -->
+@if (uploadOpen()) {
+  <div class="dialog-backdrop" (click)="closeUpload()" (keydown.escape)="closeUpload()" tabindex="-1">
+    <form class="dialog max-w-xl" role="dialog" aria-modal="true" [formGroup]="form" (ngSubmit)="upload()" (click)="$event.stopPropagation()" novalidate>
+      <div class="flex items-start justify-between gap-4">
+        <h2 class="dialog-title">Ajouter un document</h2>
+        <button type="button" class="btn-icon -mr-2 -mt-1" (click)="closeUpload()" aria-label="Fermer">
+          <app-icon name="x" class="h-5 w-5" />
+        </button>
+      </div>
+
+      @if (uploadError()) {
+        <div class="mt-4">
+          <app-alert type="error">{{ uploadError() }}</app-alert>
+        </div>
+      }
+
+      <div class="mt-5 grid gap-4">
+        <label class="block">
+          <span class="field-label">Fichier</span>
+          <input
+            class="input file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-sm file:font-medium file:text-slate-700 dark:file:bg-slate-800 dark:file:text-slate-200"
+            type="file"
+            [accept]="accept"
+            [class.input-invalid]="fileTouched() && !!fileError()"
+            (change)="onFileSelected($event)"
+          />
+          @if (fileTouched() && fileError()) {
+            <span class="field-error">{{ fileError() }}</span>
+          } @else {
+            <span class="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">Formats : {{ extensions }}. {{ maxSize }} maximum.</span>
+          }
+        </label>
+        <label class="block">
+          <span class="field-label">Titre (facultatif)</span>
+          <input class="input" type="text" formControlName="title" maxlength="200" placeholder="Par défaut : nom du fichier" [class.input-invalid]="titleInvalid()" />
+          @if (titleInvalid()) { <span class="field-error">200 caractères maximum.</span> }
+        </label>
+        @if (canPublish()) {
+          <label class="block">
+            <span class="field-label">Accès</span>
+            <select class="input" formControlName="visibility">
+              @for (v of visibilities; track v) {
+                <option [value]="v">{{ visibilityLabels[v] }}</option>
+              }
+            </select>
+            <span class="mt-1.5 block text-xs text-slate-500 dark:text-slate-400">
+              « Privé » : visible de vous, des RH et des administrateurs. « Tous les employés » : visible de tout utilisateur connecté.
+            </span>
+          </label>
+        } @else {
+          <p class="text-xs text-slate-500 dark:text-slate-400">Ce document sera visible de vous, des RH et des administrateurs.</p>
+        }
+      </div>
+
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeUpload()">Annuler</button>
+        <button type="submit" class="btn-primary !w-auto" [disabled]="uploading()">{{ uploading() ? 'Envoi…' : 'Ajouter' }}</button>
+      </div>
+    </form>
+  </div>
+}
+
+<!-- Confirmation de suppression -->
+@if (deleting(); as doc) {
+  <div class="dialog-backdrop" (click)="closeDelete()" (keydown.escape)="closeDelete()" tabindex="-1">
+    <div class="dialog" role="alertdialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <h2 class="dialog-title">Supprimer le document</h2>
+      <p class="mt-4 text-sm text-slate-600 dark:text-slate-300">
+        « {{ doc.title }} » et son fichier seront supprimés définitivement. Cette action est irréversible.
+      </p>
+      <div class="dialog-actions mt-6">
+        <button type="button" class="btn-secondary" (click)="closeDelete()">Conserver</button>
+        <button type="button" class="btn-danger" [disabled]="deleteBusy()" (click)="remove()">
+          {{ deleteBusy() ? 'Suppression…' : 'Supprimer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

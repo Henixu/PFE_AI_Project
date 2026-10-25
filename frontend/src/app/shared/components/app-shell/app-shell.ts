@@ -6,6 +6,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Icon } from '../icon/icon';
 import { IconName } from '../icon/icons';
+import { NotificationBell } from '../notification-bell/notification-bell';
 import { ThemeToggle } from '../theme-toggle/theme-toggle';
 
 interface NavItem {
@@ -22,7 +23,8 @@ const NAV: { title?: string; items: NavItem[] }[] = [
       { label: 'Tableau de bord', route: '/dashboard', icon: 'squares' },
       { label: 'Employés', route: '/employees', icon: 'users', roles: ['ADMIN', 'HR'] },
       { label: 'Départements', route: '/departments', icon: 'building', roles: ['ADMIN', 'HR'] },
-      { label: 'Tâches', route: '/tasks', icon: 'clipboard' }
+      { label: 'Tâches', route: '/tasks', icon: 'clipboard' },
+      { label: 'Documents', route: '/documents', icon: 'document' }
     ]
   },
   {
@@ -51,7 +53,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** Mise en page des écrans connectés : barre latérale de navigation + en-tête. */
 @Component({
   selector: 'app-shell',
-  imports: [RouterLink, RouterLinkActive, ThemeToggle, Icon],
+  imports: [RouterLink, RouterLinkActive, ThemeToggle, NotificationBell, Icon],
   templateUrl: './app-shell.html'
 })
 export class AppShell {

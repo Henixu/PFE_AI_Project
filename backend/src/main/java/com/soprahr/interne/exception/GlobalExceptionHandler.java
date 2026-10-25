@@ -9,6 +9,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 import com.soprahr.interne.dto.ApiError;
 
@@ -46,6 +49,17 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiError> integrity(DataIntegrityViolationException e) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.of(409, "Conflict", "Cette opération entre en conflit avec des données existantes"));
+    }
+
+    /** Fichier plus gros que la limite multipart (spring.servlet.multipart.max-file-size). */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiError> uploadTooLarge(MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(413).body(ApiError.of(413, "Payload Too Large", "Fichier trop volumineux"));
+    }
+
+    @ExceptionHandler({ MissingServletRequestPartException.class, MultipartException.class })
+    public ResponseEntity<ApiError> invalidUpload(Exception e) {
+        return ResponseEntity.badRequest().body(ApiError.of(400, "Bad Request", "Aucun fichier fourni"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

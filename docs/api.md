@@ -68,6 +68,46 @@ Chaque tâche renvoyée porte `overdue` (échéance dépassée et statut `TODO`/
 Une demande n'est décidée qu'une fois (409 ensuite) et jamais par son propre auteur (400). L'auteur, la date et le commentaire de la décision restent
 sur la demande et dans `audit_logs` (`LEAVE_APPROVE`, `LEAVE_REJECT`). Les durées comptent les jours calendaires, bornes incluses.
 
+## Documents (tout utilisateur connecté, selon les droits)
+
+Visibilité : un document `PRIVATE` est visible de son propriétaire, des `ADMIN` et des `HR` ; un document `INTERNAL` est visible de tout utilisateur connecté,
+mais seuls `ADMIN` et `HR` peuvent en publier. Supprimer est réservé au propriétaire, aux `ADMIN` et aux `HR`. Un document hors périmètre répond 404.
+
+| Méthode | Route | Utilité |
+|---|---|---|
+| `POST` | `/api/documents` | Téléversement `multipart/form-data` : `file` (obligatoire), `title?` (200 car. max., nom du fichier par défaut), `visibility?` (`PRIVATE` par défaut) → 201. 400 si fichier absent, vide, trop gros, extension non autorisée ou contenu incohérent avec l'extension ; 403 si `INTERNAL` demandé sans être `ADMIN`/`HR` ; 413 au-delà de la limite multipart |
+| `GET` | `/api/documents` | Liste paginée des documents autorisés. Paramètres : `search` (titre, nom de fichier), `mine=true`, `page`, `size` (max 100), `sortBy` (`createdAt`, `title`, `fileName`, `sizeBytes`), `direction` |
+| `GET` | `/api/documents/{id}` | Métadonnées : titre, nom, type, taille, visibilité, auteur (`ownerName`, `ownerEmail`), date, `canDelete` |
+| `GET` | `/api/documents/{id}/download` | Téléchargement, permission vérifiée à chaque appel. Toujours `Content-Disposition: attachment`, type issu de l'enregistrement, `X-Content-Type-Options: nosniff`. 404 si le fichier a disparu du disque |
+| `DELETE` | `/api/documents/{id}` | 204 ; 403 si visible mais non supprimable par l'appelant |
+
+Contrôles à l'envoi : formats `pdf`, `png`, `jpg`, `jpeg`, `docx`, `xlsx`, `txt` (liste blanche) ; taille maximale `DOCUMENT_MAX_SIZE_MB` (10 Mo par défaut) ; la signature des premiers octets doit correspondre
+à l'extension (un exécutable renommé en `.pdf` est refusé) ; le nom affiché est nettoyé (chemin, caractères de contrôle ou de sens d'écriture, caractères réservés).
+
+Stockage : les fichiers sont écrits sous `DOCUMENTS_STORAGE_DIR` (défaut `./uploads/documents`, ignoré par git, jamais servi directement par l'application) sous un nom généré `<uuid>.<extension>` ;
+le nom fourni par l'utilisateur n'entre dans aucun chemin. La base ne conserve que les métadonnées et ce nom de stockage. Le fichier est retiré si l'enregistrement en base est annulé ;
+à la suppression, la ligne est retirée d'abord et le fichier une fois la transaction validée. Téléversements, téléchargements et suppressions sont inscrits dans `audit_logs`
+(`DOCUMENT_UPLOAD`, `DOCUMENT_DOWNLOAD`, `DOCUMENT_DELETE`).
+
+## Notifications (chacun ne voit que les siennes)
+
+| Méthode | Route | Utilité |
+|---|---|---|
+| `GET` | `/api/notifications` | Liste paginée, plus récentes d'abord. Paramètres : `unreadOnly=true`, `page`, `size` (max 100). Chaque élément : `type`, `title`, `message`, `link`, `read`, `createdAt`, `readAt` |
+| `GET` | `/api/notifications/unread-count` | `{count}` : nombre de notifications non lues |
+| `PATCH` | `/api/notifications/{id}/read` | Marque une notification lue (persisté ; idempotent). 404 si elle n'appartient pas à l'appelant |
+| `POST` | `/api/notifications/read-all` | Marque toutes les siennes lues → `{updated}` |
+| `POST` | `/api/admin/notifications/due-alerts/run` | `ADMIN` : exécute immédiatement la génération des alertes d'échéance → `{created}` |
+
+Création (sans API publique, par les services métier, dans la transaction de l'événement) :
+- affectation d'une tâche (création ou changement de responsable) → `TASK_ASSIGNED` au nouveau responsable, sauf s'il s'est affecté la tâche lui-même ;
+- approbation ou refus d'un congé → `LEAVE_DECISION` à l'employé, avec le commentaire de décision ;
+- alerte d'échéance → `TASK_DUE` au responsable d'une tâche `TODO`/`IN_PROGRESS` dont l'échéance est dépassée, tombe aujourd'hui ou dans les `DUE_ALERTS_DAYS_AHEAD` prochains jours (1 par défaut).
+  Traitement planifié chaque jour (`DUE_ALERTS_CRON`, défaut `0 0 7 * * *`, désactivable par `DUE_ALERTS_ENABLED=false`) ; une tâche n'alerte qu'une fois par échéance
+  (clé de déduplication unique en base), reporter l'échéance réarme l'alerte.
+
+Un employé sans compte, ou dont le compte est désactivé, n'est pas notifié.
+
 Authentification : en-tête `Authorization: Bearer <jwt>`. Réponses : `401` sans jeton valide ou expiré, `403` si le rôle est insuffisant.
 Règles par route : `/api/admin/**` → `ADMIN` ; `/api/audit/**` → `ADMIN`, `HR` ; le reste exige un utilisateur connecté (`@PreAuthorize` pour les règles plus fines).
 La déconnexion est locale (le JWT est sans état et expire seul).

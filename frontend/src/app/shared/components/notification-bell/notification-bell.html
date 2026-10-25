@@ -1,0 +1,11 @@
+<a routerLink="/notifications" class="btn-icon relative" [attr.aria-label]="label()" [title]="label()">
+  <app-icon name="bell" class="h-5 w-5" />
+  @if (count() > 0) {
+    <span
+      class="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-rose-600 px-1 text-[10px] font-semibold leading-none text-white"
+      aria-hidden="true"
+    >
+      {{ badge() }}
+    </span>
+  }
+</a>

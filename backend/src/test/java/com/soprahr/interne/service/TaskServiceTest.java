@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -30,6 +32,7 @@ import com.soprahr.interne.dto.TaskResponse;
 import com.soprahr.interne.entity.Employee;
 import com.soprahr.interne.entity.Task;
 import com.soprahr.interne.entity.User;
+import com.soprahr.interne.entity.enums.NotificationType;
 import com.soprahr.interne.entity.enums.Role;
 import com.soprahr.interne.entity.enums.TaskPriority;
 import com.soprahr.interne.entity.enums.TaskStatus;
@@ -46,6 +49,7 @@ class TaskServiceTest {
     @Mock EmployeeRepository employees;
     @Mock ActorResolver actors;
     @Mock AuditService audit;
+    @Mock NotificationPublisher notifier;
 
     private TaskService service;
 
@@ -60,7 +64,7 @@ class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new TaskService(tasks, employees, actors, audit);
+        service = new TaskService(tasks, employees, actors, audit, notifier);
         adminUser = TestData.user(1L, "admin@test.local", Role.ADMIN);
         managerUser = TestData.user(2L, "manager@test.local", Role.MANAGER);
         aliceUser = TestData.user(3L, "alice@test.local", Role.EMPLOYEE);
@@ -105,6 +109,31 @@ class TaskServiceTest {
         assertEquals("Alice Dupont", r.assigneeName());
         assertTrue(r.canEdit());
         verify(audit).record(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void assigningATaskNotifiesTheAssigneeWithAssignerAndDueDate() {
+        LocalDate due = LocalDate.now().plusDays(3);
+
+        service.create(request(alice.getId(), due), "manager@test.local");
+
+        verify(notifier).notifyEmployee(eq(alice), eq(NotificationType.TASK_ASSIGNED), eq("Nouvelle tâche affectée"),
+                contains("Karim Manager vous a affecté la tâche"), eq("/tasks"));
+    }
+
+    @Test
+    void assigningATaskToOneselfOrNoOneSendsNoNotification() {
+        service.create(request(alice.getId(), null), "alice@test.local");
+        service.create(request(null, null), "manager@test.local");
+
+        verify(notifier, never()).notifyEmployee(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void refusedAssignmentSendsNoNotification() {
+        assertThrows(AccessDeniedException.class, () -> service.create(request(bob.getId(), null), "alice@test.local"));
+
+        verify(notifier, never()).notifyEmployee(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -182,6 +211,18 @@ class TaskServiceTest {
         assertEquals("Nouveau titre", r.title());
         assertEquals(TaskPriority.URGENT, r.priority());
         assertEquals(manager.getId(), r.assigneeId());
+    }
+
+    @Test
+    void reassigningNotifiesTheNewAssigneeOnly() {
+        Task task = task(1L, adminUser, alice, TaskStatus.TODO);
+        when(tasks.findWithDetailsById(1L)).thenReturn(Optional.of(task));
+
+        service.update(1L, request(manager.getId(), null), "admin@test.local");
+        verify(notifier).notifyEmployee(eq(manager), eq(NotificationType.TASK_ASSIGNED), any(), any(), any());
+
+        service.update(1L, request(manager.getId(), null), "admin@test.local"); // inchangé : pas de nouvelle notification
+        verify(notifier, org.mockito.Mockito.times(1)).notifyEmployee(any(), any(), any(), any(), any());
     }
 
     @Test

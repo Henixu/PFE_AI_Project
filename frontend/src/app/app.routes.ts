@@ -58,6 +58,16 @@ export const routes: Routes = [
     loadComponent: () => import('./features/leaves/leave-review').then((m) => m.LeaveReview)
   },
   {
+    path: 'documents',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/documents/documents').then((m) => m.Documents)
+  },
+  {
+    path: 'notifications',
+    canActivate: [authGuard],
+    loadComponent: () => import('./features/notifications/notifications').then((m) => m.Notifications)
+  },
+  {
     path: 'admin',
     canActivate: [roleGuard],
     data: { roles: ['ADMIN'] },

@@ -2,6 +2,7 @@ package com.soprahr.interne.service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -28,6 +29,7 @@ import com.soprahr.interne.entity.Employee;
 import com.soprahr.interne.entity.LeaveRequest;
 import com.soprahr.interne.entity.enums.LeaveStatus;
 import com.soprahr.interne.entity.enums.LeaveType;
+import com.soprahr.interne.entity.enums.NotificationType;
 import com.soprahr.interne.entity.enums.Role;
 import com.soprahr.interne.exception.BusinessRuleException;
 import com.soprahr.interne.exception.ConflictException;
@@ -57,18 +59,21 @@ public class LeaveService {
     private static final Set<String> SORTABLE = Set.of("startDate", "endDate", "createdAt", "status");
     /** Statuts qui « occupent » la période pour la détection des chevauchements. */
     private static final Set<LeaveStatus> BLOCKING = EnumSet.of(LeaveStatus.PENDING, LeaveStatus.APPROVED);
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final LeaveRequestRepository leaves;
     private final EmployeeRepository employees;
     private final ActorResolver actors;
     private final AuditService audit;
+    private final NotificationPublisher notifier;
 
     public LeaveService(LeaveRequestRepository leaves, EmployeeRepository employees, ActorResolver actors,
-            AuditService audit) {
+            AuditService audit, NotificationPublisher notifier) {
         this.leaves = leaves;
         this.employees = employees;
         this.actors = actors;
         this.audit = audit;
+        this.notifier = notifier;
     }
 
     public LeaveResponse submit(LeaveSubmitRequest request, String actorEmail) {
@@ -210,6 +215,13 @@ public class LeaveService {
         leave.setDecisionComment(trimmed);
         audit.record(actorEmail, decision == LeaveStatus.APPROVED ? "LEAVE_APPROVE" : "LEAVE_REJECT",
                 "LeaveRequest", id, "decision=" + decision + ", employeeId=" + leave.getEmployee().getId());
+        boolean approved = decision == LeaveStatus.APPROVED;
+        notifier.notifyEmployee(leave.getEmployee(), NotificationType.LEAVE_DECISION,
+                approved ? "Congé approuvé" : "Congé refusé",
+                "Votre demande de congé du " + leave.getStartDate().format(DAY) + " au "
+                        + leave.getEndDate().format(DAY) + " a été " + (approved ? "approuvée." : "refusée.")
+                        + (trimmed == null ? "" : " Commentaire : " + trimmed),
+                "/leaves");
         return toResponse(leave, actor, decidedByNames(List.of(leave)));
     }
 
